@@ -1,6 +1,7 @@
 import {ProviderType} from "../types";
 import {OpenAiModelProvider} from "./driver/openai";
 import {mapError} from "../../../lib/error";
+import {buildChatCompletionsUrl} from "./chat-url.cjs";
 
 const ModelProviderMap = {
     openai: OpenAiModelProvider,
@@ -24,18 +25,8 @@ export const ModelProvider = {
         // console.log('ModelProvider.apiUrl', {type, apiUrl, apiHost, url});
         switch (type) {
             case "openai":
-                /**
-                 * 根据传入的 url 判断是否需要在其末尾加 `/v[数字]/`。
-                 * - 如果 以 `/` 结尾，则不加
-                 * - 要加：其余情况。
-                 */
-                if (url.endsWith('/')) {
-                    return `${url}chat/completions`;
-                }
-                if (url.endsWith('/chat/completions')) {
-                    return url;
-                }
-                return `${url}/v1/chat/completions`;
+                // 拼接规则委托给共享模块（支持版本号结尾的地址，如火山 Ark /api/coding/v3）
+                return buildChatCompletionsUrl(url);
         }
         throw new Error(`Unsupported provider type: ${type}`);
     },

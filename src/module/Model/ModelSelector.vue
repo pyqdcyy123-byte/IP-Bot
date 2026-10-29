@@ -25,8 +25,8 @@ const availableModels = computed(() => {
         if (!p.data.enabled) {
             continue;
         }
-        // 如果指定了提供商过滤，则只显示该提供商的模型
-        if (props.providerFilter && p.id !== props.providerFilter) {
+        // 如果指定了提供商过滤，则只显示该提供商的模型（管理员推送的供应商不受限制）
+        if (props.providerFilter && p.id !== props.providerFilter && !p.isServerPush) {
             continue;
         }
         for (const m of p.data.models) {

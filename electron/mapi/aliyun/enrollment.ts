@@ -78,8 +78,8 @@ async function ensureEnrollmentAudio(filePath: string): Promise<string> {
  */
 
 /**
- * 上传音频文件到 OSS 获取公网可访问 URL
- * CosyVoice voice-enrollment API 要求 url 必须是公网可访问的 HTTP/HTTPS 链接
+ * 获取复刻音频的可访问 URL
+ * 配置了 OSS 时上传到 OSS 获取公网 URL；未配置时返回 Base64 Data URI（DashScope 声音复刻支持）
  */
 export async function uploadFileToLease(apiKey: string, filePath: string, ossConfig?: OssConfig): Promise<string> {
     if (!fs.existsSync(filePath)) {
@@ -108,7 +108,18 @@ export async function uploadFileToLease(apiKey: string, filePath: string, ossCon
     }
 
     if (!config) {
-        throw new Error('缺少 OSS 配置，无法上传复刻音频。请在「模型」→「阿里云百炼」中配置 OSS（accessKeyId, accessKeySecret, bucket, region）');
+        // 未配置 OSS：使用 Base64 Data URI 提交（DashScope 声音复刻原生支持，无需公网 URL）
+        const stats = fs.statSync(enrollmentAudioPath);
+        if (stats.size > 10 * 1024 * 1024) {
+            throw new Error('复刻音频超过 10MB 限制，请裁剪后重试');
+        }
+
+        const audioBuffer = fs.readFileSync(enrollmentAudioPath);
+        logger.info('[Aliyun:Enrollment] 未配置 OSS，使用 Base64 Data URI 提交复刻音频', {
+            filePath: enrollmentAudioPath,
+            size: audioBuffer.length
+        });
+        return 'data:audio/wav;base64,' + audioBuffer.toString('base64');
     }
 
     logger.info('[Aliyun:Enrollment] 开始上传音频到 OSS', {

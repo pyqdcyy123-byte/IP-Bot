@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as https from 'https';
 import * as http from 'http';
 import logger from '../log/main';
+import { buildV2NodeInfoList } from './v2-task-payload.cjs';
 
 /**
  * RunningHub API 配置
@@ -11,7 +12,7 @@ import logger from '../log/main';
  * 节点配置项：支持字符串(nodeId)或对象({id, fieldName})格式
  * 对象格式可自定义 fieldName，适应不同工作流的节点输入字段
  */
-export type NodeConfigEntry = string | { id: string; fieldName?: string };
+export type NodeConfigEntry = string | { id: string; fieldName?: string; value?: string | number };
 
 export interface RunningHubConfig {
   apiKey: string;
@@ -30,6 +31,8 @@ export interface RunningHubConfig {
     audioStartNode?: NodeConfigEntry;
     audioEndNode?: NodeConfigEntry;
     textNode?: NodeConfigEntry;
+    /** 🔧 扩展：额外节点参数覆盖，fieldValue 支持 {{audioDuration}} 占位符 */
+    extraNodes?: Array<{ nodeId: string; fieldName: string; fieldValue: string | number }>;
   };
 }
 
@@ -102,11 +105,16 @@ export class RunningHubClient {
   private static HARDCODED = {
     apiKey: '',
     baseUrl: 'https://www.runninghub.cn',
-    // 云端模型1（网络节点01）
-    workflowId1: '2009491298805354497',
+    // 云端模型1（网络节点01）：数字人对口型 AI 应用
+    workflowId1: '2044675464228245506',
     nodes1: {
-      videoNode: { id: '33', fieldName: 'file' } as NodeConfigEntry,
-      audioNode: { id: '2', fieldName: 'audio' } as NodeConfigEntry,
+      videoNode: { id: '228', fieldName: 'video' } as NodeConfigEntry,
+      audioNode: { id: '125', fieldName: 'audio' } as NodeConfigEntry,
+      durationNode: { id: '342', fieldName: 'text', value: '0:{{audioDuration}}' } as NodeConfigEntry,
+      fpsNode: { id: '343', fieldName: 'value', value: '30' } as NodeConfigEntry,
+      widthNode: { id: '345', fieldName: 'value', value: '720' } as NodeConfigEntry,
+      heightNode: { id: '344', fieldName: 'value', value: '1280' } as NodeConfigEntry,
+      textNode: { id: '347', fieldName: 'text' } as NodeConfigEntry,
     },
     // 云端模型2（网络节点02）
     workflowId2: '1945645768491585538',
@@ -143,11 +151,16 @@ export class RunningHubClient {
       videoNode: { id: '85', fieldName: 'video' } as NodeConfigEntry,
       audioNode: { id: '4', fieldName: 'audio' } as NodeConfigEntry,
     },
-    // 云端模型8（AI应用，网络节点08）
-    workflowId8: '1925626855154749442',
+    // 云端模型8（AI应用，网络节点08）：数字人对口型
+    workflowId8: '2044675464228245506',
     nodes8: {
-      videoNode: { id: '1', fieldName: 'file' } as NodeConfigEntry,
-      audioNode: { id: '4', fieldName: 'audio' } as NodeConfigEntry,
+      videoNode: { id: '228', fieldName: 'video' } as NodeConfigEntry,
+      audioNode: { id: '125', fieldName: 'audio' } as NodeConfigEntry,
+      durationNode: { id: '342', fieldName: 'text', value: '0:{{audioDuration}}' } as NodeConfigEntry,
+      fpsNode: { id: '343', fieldName: 'value', value: '30' } as NodeConfigEntry,
+      widthNode: { id: '345', fieldName: 'value', value: '720' } as NodeConfigEntry,
+      heightNode: { id: '344', fieldName: 'value', value: '1280' } as NodeConfigEntry,
+      textNode: { id: '347', fieldName: 'text' } as NodeConfigEntry,
     },
     apiVersion: 'v2' as const,
     instanceType: 'default' as const,
@@ -600,113 +613,25 @@ export class RunningHubClient {
       }
 
       if (this.config.apiVersion === 'v2') {
-        const nodeInfoList: Array<{ nodeId: string; fieldName: string; fieldValue: string; description: string }> = [];
-
-        // 视频节点
+        // 节点参数构建委托给共享纯函数模块（支持 value 覆盖、{{audioDuration}} 模板、extraNodes）
         const videoNode = resolveNode(this.config.nodes.videoNode, 'videoNode')!;
-        nodeInfoList.push({
-          nodeId: videoNode.nodeId,
-          fieldName: videoNode.fieldName,
-          fieldValue: videoFileName,
-          description: '请导入视频'
-        });
-
-        // 音频节点
         const audioNode = resolveNode(this.config.nodes.audioNode, 'audioNode')!;
-        nodeInfoList.push({
-          nodeId: audioNode.nodeId,
-          fieldName: audioNode.fieldName,
-          fieldValue: audioFileName,
-          description: '请导入新的音频'
-        });
-
-        // 时长节点
-        if (audioDuration && this.config.nodes.durationNode) {
-          const durationNode = resolveNode(this.config.nodes.durationNode, 'durationNode')!;
-          nodeInfoList.push({
-            nodeId: durationNode.nodeId,
-            fieldName: durationNode.fieldName,
-            fieldValue: String(Math.ceil(audioDuration)),
-            description: '视频时长设置（秒）'
-          });
+        const cfgNodes: Record<string, any> = {
+          videoNode,
+          audioNode
+        };
+        for (const key of ['durationNode', 'fpsNode', 'widthNode', 'heightNode', 'maxSideNode', 'audioStartNode', 'audioEndNode', 'textNode'] as const) {
+          const resolved = resolveNode(this.config.nodes[key], key);
+          if (resolved) {
+            const raw = this.config.nodes[key];
+            cfgNodes[key] = (raw && typeof raw === 'object' && raw.value !== undefined)
+              ? { ...resolved, value: raw.value }
+              : resolved;
+          }
         }
-
-        // 帧率节点
-        if (this.config.nodes.fpsNode) {
-          const fpsNode = resolveNode(this.config.nodes.fpsNode, 'fpsNode')!;
-          nodeInfoList.push({
-            nodeId: fpsNode.nodeId,
-            fieldName: fpsNode.fieldName,
-            fieldValue: '30',
-            description: '视频帧率'
-          });
-        }
-
-        // 宽度节点
-        if (this.config.nodes.widthNode) {
-          const widthNode = resolveNode(this.config.nodes.widthNode, 'widthNode')!;
-          nodeInfoList.push({
-            nodeId: widthNode.nodeId,
-            fieldName: widthNode.fieldName,
-            fieldValue: '576',
-            description: '视频宽度'
-          });
-        }
-
-        // 高度节点
-        if (this.config.nodes.heightNode) {
-          const heightNode = resolveNode(this.config.nodes.heightNode, 'heightNode')!;
-          nodeInfoList.push({
-            nodeId: heightNode.nodeId,
-            fieldName: heightNode.fieldName,
-            fieldValue: '1024',
-            description: '视频高度'
-          });
-        }
-
-        // 最长边节点
-        if (this.config.nodes.maxSideNode) {
-          const maxSideNode = resolveNode(this.config.nodes.maxSideNode, 'maxSideNode')!;
-          nodeInfoList.push({
-            nodeId: maxSideNode.nodeId,
-            fieldName: maxSideNode.fieldName,
-            fieldValue: '1024',
-            description: '最长边'
-          });
-        }
-
-        // 音频开始秒数节点
-        if (this.config.nodes.audioStartNode) {
-          const audioStartNode = resolveNode(this.config.nodes.audioStartNode, 'audioStartNode')!;
-          nodeInfoList.push({
-            nodeId: audioStartNode.nodeId,
-            fieldName: audioStartNode.fieldName,
-            fieldValue: '0',
-            description: '音频开始秒数'
-          });
-        }
-
-        // 音频结束秒数节点
-        if (this.config.nodes.audioEndNode && audioDuration) {
-          const audioEndNode = resolveNode(this.config.nodes.audioEndNode, 'audioEndNode')!;
-          nodeInfoList.push({
-            nodeId: audioEndNode.nodeId,
-            fieldName: audioEndNode.fieldName,
-            fieldValue: String(Math.ceil(audioDuration)),
-            description: '音频结束秒数'
-          });
-        }
-
-        // 提示词文本节点
-        if (this.config.nodes.textNode && text) {
-          const textNode = resolveNode(this.config.nodes.textNode, 'textNode')!;
-          nodeInfoList.push({
-            nodeId: textNode.nodeId,
-            fieldName: textNode.fieldName,
-            fieldValue: text,
-            description: '提示词'
-          });
-        }
+        const extraNodes = (this.config.nodes as any)?.extraNodes;
+        if (Array.isArray(extraNodes)) cfgNodes.extraNodes = extraNodes;
+        const nodeInfoList = buildV2NodeInfoList(cfgNodes, { videoFileName, audioFileName, audioDuration, text });
 
         const payload = {
           randomSeed: true,
@@ -736,22 +661,39 @@ export class RunningHubClient {
 
       const videoNodeV1 = resolveNode(this.config.nodes.videoNode, 'videoNode')!;
       const audioNodeV1 = resolveNode(this.config.nodes.audioNode, 'audioNode')!;
+      const nodeInfoList = [
+        {
+          nodeId: videoNodeV1.nodeId,
+          // 🔧 使用配置里的字段名（不同工作流的视频输入字段可能是 file 或 video）
+          fieldName: videoNodeV1.fieldName || 'file',
+          fieldValue: videoFileName
+        },
+        {
+          nodeId: audioNodeV1.nodeId,
+          fieldName: audioNodeV1.fieldName || 'audio',
+          fieldValue: audioFileName
+        }
+      ];
+
       const payload = {
         apiKey: this.config.apiKey,
         workflowId: this.config.workflowId,
-        nodeInfoList: [
-          {
-            nodeId: videoNodeV1.nodeId,
-            fieldName: 'file',
-            fieldValue: videoFileName
-          },
-          {
-            nodeId: audioNodeV1.nodeId,
-            fieldName: 'audio',
-            fieldValue: audioFileName
-          }
-        ]
+        nodeInfoList
       };
+
+        // 🔧 扩展：额外节点参数覆盖（时长控制、帧率修正等），支持 {{audioDuration}} 占位符
+        const extraNodes = (this.config.nodes as any)?.extraNodes;
+        if (Array.isArray(extraNodes)) {
+          for (const extra of extraNodes) {
+            if (!extra?.nodeId || !extra?.fieldName) continue;
+            nodeInfoList.push({
+              nodeId: String(extra.nodeId),
+              fieldName: String(extra.fieldName),
+              fieldValue: String(extra.fieldValue ?? '').replace(/\{\{audioDuration\}\}/g, String(audioDuration ?? 0)),
+              description: '参数覆盖'
+            });
+          }
+        }
 
       logger.info('[RunningHub] v1 API请求payload', payload);
 

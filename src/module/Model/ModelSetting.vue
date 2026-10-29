@@ -334,7 +334,7 @@ const addBuiltinCustomModel = async () => {
                     <!-- 简洁的模型卡片网格 -->
                     <div class="grid grid-cols-1 gap-2">
                         <div
-                            v-for="m in provider.value?.data.models || []"
+                            v-for="m in provider?.data.models || []"
                             :key="m.id"
                             class="model-card flex items-center p-3 rounded-lg border"
                             :class="m.enabled ? 'border-[#333] bg-[#141414]' : 'border-[#333] bg-[#0f0f0f] opacity-60'"

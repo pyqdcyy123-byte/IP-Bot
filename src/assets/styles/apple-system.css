@@ -33,6 +33,14 @@ body[data-theme] {
 body[data-theme="dark"] { --primary-6: 146,187,255; }
 body[data-theme] ::selection { background: var(--theme-brand-soft); color: var(--theme-text-primary); }
 body[data-theme] :focus-visible { outline: 3px solid var(--theme-brand) !important; outline-offset: 3px; }
+/* 输入类控件不用全局 outline：Arco 组件自带圆角聚焦边框，避免直角外框错位叠加（登录框等场景） */
+/* 原生 input/textarea（如视频文案提炼的识别内容框）同样适用，否则 3px 蓝色 outline 会浮出并被容器裁切 */
+body[data-theme] :is(.arco-input, .arco-textarea, .arco-input-wrapper, .arco-select-view, .arco-checkbox, .arco-radio, textarea, input):focus-visible,
+body[data-theme] :is(.arco-input-wrapper, .arco-select-view, .arco-checkbox, .arco-radio):has(:focus-visible),
+body[data-theme] .arco-select-view :is(input, .arco-select-view-input, .arco-select-view-input-hidden, .arco-input-label-input):focus-visible,
+body[data-theme] :is(.arco-select-view, .arco-input-tag, .arco-input-label):has(input:focus-visible) {
+  outline: none !important;
+}
 body[data-theme] :is(button,a,[role="button"],summary) { -webkit-app-region: no-drag; }
 body[data-theme] :is(button,[role="button"]) { touch-action: manipulation; }
 body[data-theme] button:not(:disabled), body[data-theme] a { cursor: pointer; }

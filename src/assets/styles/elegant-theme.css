@@ -255,21 +255,26 @@ body[data-theme="soft-light"] .arco-radio-button-checked {
   border-color: rgba(37, 99, 235, 0.6) !important;
 }
 
+/* 聚焦光圈只画在 wrapper 一层；内层元素只改边框背景，否则双层光圈大小不一致（内层盖不全） */
 .dark-input-override:focus-within,
-.dark-input-override:focus-within .arco-select-view,
-.dark-input-override:focus-within .arco-textarea,
-.dark-input-override:focus-within .arco-input,
-.cyberpunk-dashboard .arco-input:focus,
-.cyberpunk-dashboard .arco-textarea:focus,
 .cyberpunk-dashboard .arco-input-number:focus,
 .cyberpunk-dashboard .arco-select-view-focus,
-.elegant-theme .arco-input:focus,
-.elegant-theme .arco-textarea:focus,
 .elegant-theme .arco-input-number:focus,
 .elegant-theme .arco-select-view-focus {
   border-color: #3b82f6 !important;
   background: rgba(0, 0, 0, 0.7) !important;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+}
+
+.dark-input-override:focus-within .arco-select-view,
+.dark-input-override:focus-within .arco-textarea,
+.dark-input-override:focus-within .arco-input,
+.cyberpunk-dashboard .arco-input:focus,
+.cyberpunk-dashboard .arco-textarea:focus,
+.elegant-theme .arco-input:focus,
+.elegant-theme .arco-textarea:focus {
+  border-color: #3b82f6 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
 }
 
 /* 浅色主题 - 输入框覆盖dark-input-override的深色样式 */
@@ -295,13 +300,18 @@ body[data-theme="soft-light"] .dark-input-override:hover .arco-input {
   border-color: #cbd5e1 !important;
 }
 
-body[data-theme="soft-light"] .dark-input-override:focus-within,
+/* 聚焦光圈只画在 wrapper 一层：内层 input/textarea 也画会形成大小不一致的双层框（内层盖不全） */
+body[data-theme="soft-light"] .dark-input-override:focus-within {
+  border-color: #3b82f6 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+}
+
 body[data-theme="soft-light"] .dark-input-override:focus-within .arco-select-view,
 body[data-theme="soft-light"] .dark-input-override:focus-within .arco-textarea,
 body[data-theme="soft-light"] .dark-input-override:focus-within .arco-input {
   border-color: #3b82f6 !important;
   background: #ffffff !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
 }
 
 body[data-theme="soft-light"] .dark-input-override input::placeholder,

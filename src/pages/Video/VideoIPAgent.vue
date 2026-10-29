@@ -5,6 +5,8 @@ import {useRouter} from "vue-router";
 const {ipcRenderer} = window.require('electron');
 const router = useRouter();
 import {t} from "../../lang";
+import {buildChatCompletionsUrl} from "../../module/Model/provider/chat-url.cjs";
+import {computeRowSpan} from "../../lib/masonry-grid.cjs";
 import {Message, Modal} from "@arco-design/web-vue";
 import {
     IconSettings,
@@ -1378,6 +1380,9 @@ const loadSettingsFromLocalStorage = () => {
         const saved = localStorage.getItem(SETTINGS_KEY);
         if (saved) {
             const parsed = JSON.parse(saved);
+            // 🔧 修复：textModelKey 以文件设置（IPC加载）为准，
+            // localStorage 快照可能过期，不能用它覆盖已选的模型（否则会回退到旧的内置豆包）
+            delete parsed.textModelKey;
             // 合并保存的设置到当前设置，保留默认值
             settings.value = {
                 ...settings.value,
@@ -3941,11 +3946,7 @@ const rewriteAllTitles = async () => {
             apiUrl = provider.data.apiHost;
         }
         if (provider.type === 'openai') {
-            if (apiUrl.endsWith('/')) {
-                apiUrl = `${apiUrl}chat/completions`;
-            } else if (!apiUrl.endsWith('/chat/completions')) {
-                apiUrl = `${apiUrl}/v1/chat/completions`;
-            }
+            apiUrl = buildChatCompletionsUrl(apiUrl);
         }
 
         const modelConfig = {
@@ -4059,11 +4060,7 @@ const generateScriptFromIPBrain = async () => {
             apiUrl = provider.data.apiHost;
         }
         if (provider.type === 'openai') {
-            if (apiUrl.endsWith('/')) {
-                apiUrl = `${apiUrl}chat/completions`;
-            } else if (!apiUrl.endsWith('/chat/completions')) {
-                apiUrl = `${apiUrl}/v1/chat/completions`;
-            }
+            apiUrl = buildChatCompletionsUrl(apiUrl);
         }
 
         const modelConfig = {
@@ -4155,11 +4152,7 @@ const generateScriptFromVideoContent = async () => {
             apiUrl = provider.data.apiHost;
         }
         if (provider.type === 'openai') {
-            if (apiUrl.endsWith('/')) {
-                apiUrl = `${apiUrl}chat/completions`;
-            } else if (!apiUrl.endsWith('/chat/completions')) {
-                apiUrl = `${apiUrl}/v1/chat/completions`;
-            }
+            apiUrl = buildChatCompletionsUrl(apiUrl);
         }
 
         const modelConfig = {
@@ -4409,11 +4402,7 @@ const generateTitleTags = async () => {
             apiUrl = provider.data.apiHost;
         }
         if (provider.type === 'openai') {
-            if (apiUrl.endsWith('/')) {
-                apiUrl = `${apiUrl}chat/completions`;
-            } else if (!apiUrl.endsWith('/chat/completions')) {
-                apiUrl = `${apiUrl}/v1/chat/completions`;
-            }
+            apiUrl = buildChatCompletionsUrl(apiUrl);
         }
 
         const modelConfig = {
@@ -4725,11 +4714,7 @@ const generateFromCustomPrompt = async () => {
             apiUrl = provider.data.apiHost;
         }
         if (provider.type === 'openai') {
-            if (apiUrl.endsWith('/')) {
-                apiUrl = `${apiUrl}chat/completions`;
-            } else if (!apiUrl.endsWith('/chat/completions')) {
-                apiUrl = `${apiUrl}/v1/chat/completions`;
-            }
+            apiUrl = buildChatCompletionsUrl(apiUrl);
         }
 
         const promptParts: string[] = [];
@@ -4864,11 +4849,7 @@ const startVideoRewriteProcessOptimized = async () => {
             apiUrl = provider.data.apiHost;
         }
         if (provider.type === 'openai') {
-            if (apiUrl.endsWith('/')) {
-                apiUrl = `${apiUrl}chat/completions`;
-            } else if (!apiUrl.endsWith('/chat/completions')) {
-                apiUrl = `${apiUrl}/v1/chat/completions`;
-            }
+            apiUrl = buildChatCompletionsUrl(apiUrl);
         }
 
         const dashscopeProvider = modelStore.providers.find(p => p.id === 'dashscope');
@@ -6648,7 +6629,11 @@ const generateAudio = async (options: { skipPolling?: boolean } = {}) => {
                     throw new Error(t("声音音色不存在"));
                 }
                 // 克隆音色使用 aliyunVoiceId，并根据存储的 targetModel 选择合成模型（兼容旧音色）
-                voiceId = prompt.content?.aliyunVoiceId || 'longyingxiao';
+                voiceId = prompt.content?.aliyunVoiceId;
+                if (!voiceId) {
+                    // 克隆未完成注册时直接报错：回退默认音色会与 targetModel 不匹配（v2 音色配 v3.5 模型触发 418）
+                    throw new Error(t("该音色尚未完成克隆注册，请重新进行声音克隆后再使用"));
+                }
                 t1Model = prompt.content?.targetModel || 'cosyvoice-v2';
                 console.log("[TTS] T1 自定义音色:", voiceId, "model:", t1Model);
             }
@@ -15358,6 +15343,31 @@ const onWorkspaceCommand = (event: Event) => {
 };
 onMounted(()=>window.addEventListener('ipbot:command',onWorkspaceCommand));
 onBeforeUnmount(()=>window.removeEventListener('ipbot:command',onWorkspaceCommand));
+
+// 瀑布流布局：伸缩某个面板时其它列自动上移补位，避免 grid 自动行高把同行列绑在一起
+const MASONRY_ROW_UNIT = 8;
+let masonryObserver: ResizeObserver | null = null;
+const updateMasonrySpans = () => {
+    const grid = document.querySelector('.studio-creation-grid') as HTMLElement | null;
+    if (!grid) return;
+    const gap = parseFloat(getComputedStyle(grid).rowGap) || 0;
+    for (const child of Array.from(grid.children) as HTMLElement[]) {
+        const height = child.getBoundingClientRect().height;
+        child.style.gridRowEnd = `span ${computeRowSpan(height, MASONRY_ROW_UNIT, gap)}`;
+    }
+};
+onMounted(() => {
+    const grid = document.querySelector('.studio-creation-grid') as HTMLElement | null;
+    if (!grid || typeof ResizeObserver === 'undefined') return;
+    grid.style.gridAutoRows = `${MASONRY_ROW_UNIT}px`;
+    updateMasonrySpans();
+    masonryObserver = new ResizeObserver(updateMasonrySpans);
+    for (const child of Array.from(grid.children)) masonryObserver.observe(child);
+});
+onBeforeUnmount(() => {
+    masonryObserver?.disconnect();
+    masonryObserver = null;
+});
 const handleCoverStyleUpdate = (style: any) => {
     coverStyle.value = style;
     if (coverConfig.value) coverConfig.value.coverStyle = JSON.parse(JSON.stringify(style));
@@ -18724,12 +18734,16 @@ const handleCoverStyleUpdate = (style: any) => {
         <a-modal
             v-model:visible="showCustomPromptOptionsDialog"
             title=""
+            :closable="false"
             :footer="false"
             width="min(1120px, calc(100vw - 16px))"
             modal-class="custom-prompt-modal"
             @cancel="showCustomPromptOptionsDialog = false"
         >
             <div class="custom-prompt-dialog custom-prompt-dialog--result-only">
+                <button class="custom-prompt-modal-x" @click="showCustomPromptOptionsDialog = false" :title="$t('关闭')">
+                    <icon-close/>
+                </button>
                 <div class="custom-prompt-dialog-head">
                     <div class="custom-prompt-dialog-title">自由创作文案</div>
                 </div>
@@ -18771,19 +18785,6 @@ const handleCoverStyleUpdate = (style: any) => {
                             {{ option }}
                         </div>
                     </div>
-                </div>
-
-                <div class="custom-prompt-footer">
-                    <a-button @click="showCustomPromptOptionsDialog = false">
-                        关闭
-                    </a-button>
-                    <a-button
-                        type="primary"
-                        :disabled="selectedCustomPromptIndex === null"
-                        @click="selectedCustomPromptIndex !== null && useCustomPromptOption(customPromptOptions[selectedCustomPromptIndex])"
-                    >
-                        使用此文案
-                    </a-button>
                 </div>
             </div>
         </a-modal>
@@ -18881,6 +18882,29 @@ const handleCoverStyleUpdate = (style: any) => {
     display: none !important;
 }
 
+.custom-prompt-modal-x {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--theme-text-secondary, #94a3b8);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.custom-prompt-modal-x:hover {
+    color: var(--theme-text-primary, #f8fafc);
+    background: rgba(100, 116, 139, 0.16);
+}
+
 .custom-prompt-modal .arco-modal-title {
     color: #e2e8f0 !important;
     font-weight: 700 !important;
@@ -18902,8 +18926,8 @@ const handleCoverStyleUpdate = (style: any) => {
     max-height: calc(100vh - 32px) !important;
     overflow: auto !important;
     padding: 20px 20px 18px !important;
-    scrollbar-width: auto;
-    scrollbar-color: #f59e0b rgba(30, 41, 59, 0.95);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
 }
 
 .custom-prompt-modal .arco-btn:not(.arco-btn-primary) {
@@ -19312,8 +19336,8 @@ const handleCoverStyleUpdate = (style: any) => {
 }
 
 .custom-prompt-dialog--result-only {
-    gap: 20px;
-    min-height: 580px;
+    gap: 12px;
+    min-height: 0;
 }
 
 .custom-prompt-dialog-head {
@@ -19321,7 +19345,7 @@ const handleCoverStyleUpdate = (style: any) => {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 2px 0 14px;
+    padding: 0 0 10px;
 }
 
 .custom-prompt-dialog-head::after {
@@ -19338,7 +19362,7 @@ const handleCoverStyleUpdate = (style: any) => {
     font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.02em;
-    color: #f3f4f6;
+    color: var(--theme-text-primary, #f3f4f6);
 }
 
 .custom-prompt-results {
@@ -19365,12 +19389,12 @@ const handleCoverStyleUpdate = (style: any) => {
 }
 
 .custom-prompt-option-card--grid {
-    min-height: 430px;
+    min-height: 0;
 }
 
 .custom-prompt-option-content--grid {
     max-height: none;
-    min-height: 332px;
+    min-height: 0;
     padding-right: 0;
 }
 
@@ -19881,8 +19905,8 @@ const handleCoverStyleUpdate = (style: any) => {
     max-height: calc(100vh - 300px);
     overflow: auto;
     padding-right: 4px;
-    scrollbar-width: auto;
-    scrollbar-color: #f59e0b rgba(30, 41, 59, 0.95);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
 }
 
 .custom-prompt-option-card {
@@ -20026,8 +20050,8 @@ const handleCoverStyleUpdate = (style: any) => {
     color: #e5e7eb;
     max-height: min(180px, calc(100vh - 420px));
     overflow: auto;
-    scrollbar-width: auto;
-    scrollbar-color: #f59e0b rgba(30, 41, 59, 0.95);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
 }
 
 .custom-prompt-option-card.is-selected .custom-prompt-option-content {
@@ -20051,31 +20075,31 @@ const handleCoverStyleUpdate = (style: any) => {
 .custom-prompt-modal .arco-modal-body::-webkit-scrollbar,
 .custom-prompt-options::-webkit-scrollbar,
 .custom-prompt-option-content::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
 }
 
 .custom-prompt-modal .arco-modal-body::-webkit-scrollbar-track,
 .custom-prompt-options::-webkit-scrollbar-track,
 .custom-prompt-option-content::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.88);
+    background: transparent;
     border-radius: 999px;
-    border: 1px solid rgba(71, 85, 105, 0.52);
 }
 
 .custom-prompt-modal .arco-modal-body::-webkit-scrollbar-thumb,
 .custom-prompt-options::-webkit-scrollbar-thumb,
 .custom-prompt-option-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #f59e0b, #f97316);
+    background: rgba(100, 116, 139, 0.45);
     border-radius: 999px;
-    border: 1px solid rgba(255, 237, 213, 0.18);
-    box-shadow: 0 0 10px rgba(249, 115, 22, 0.28);
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
 
 .custom-prompt-modal .arco-modal-body::-webkit-scrollbar-thumb:hover,
 .custom-prompt-options::-webkit-scrollbar-thumb:hover,
 .custom-prompt-option-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #fbbf24, #fb923c);
+    background: rgba(148, 163, 184, 0.65);
+    background-clip: padding-box;
 }
 
 @keyframes customPromptOrbit {

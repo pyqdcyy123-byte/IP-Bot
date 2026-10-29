@@ -42,6 +42,7 @@
     "@electron-toolkit/utils": "^3.0.0",
     "@electron/remote": "^2.1.2",
     "@gradio/client": "^1.5.2",
+    "ali-oss": "^6.23.0",
     "archiver": "^7.0.0",
     "axios": "^1.7.2",
     "better-sqlite3": "^12.6.0",

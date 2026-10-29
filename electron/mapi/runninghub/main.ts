@@ -486,18 +486,26 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
   const sysCfg = getElectronSystemConfigSync();
   const apiKey = sysCfg.runninghub_api_key || '';
   // 工作流ID：优先从后台配置读取，如果没有则使用硬编码默认值
-  const workflowId1 = sysCfg.runninghub_workflow_id_1 || '2009491298805354497';
+  const workflowId1 = sysCfg.runninghub_workflow_id_1 || '2044675464228245506';
   const workflowId2 = sysCfg.runninghub_workflow_id_2 || '1945645768491585538';
   const workflowId3 = sysCfg.runninghub_workflow_id_3 || '1984199202748186626';
   const workflowId4 = sysCfg.runninghub_workflow_id_4 || '2022323003056459778';
   const workflowId5 = sysCfg.runninghub_workflow_id_5 || '1928389791241650178';
   const workflowId6 = sysCfg.runninghub_workflow_id_6 || '1976590859607085058';
   const workflowId7 = sysCfg.runninghub_workflow_id_7 || '1930534351568556033';
-  const workflowId8 = sysCfg.runninghub_workflow_id_8 || '1925626855154749442';
+  const workflowId8 = sysCfg.runninghub_workflow_id_8 || '2044675464228245506';
 
   // 云端模型默认节点配置（使用对象格式显式指定 fieldName，避免依赖 DEFAULT_FIELD_NAMES 映射）
-  // 云端模型1（网络节点01）
-  const defaultMode1Nodes = { videoNode: { id: '33', fieldName: 'file' }, audioNode: { id: '2', fieldName: 'audio' } };
+  // 云端模型1（网络节点01）：数字人对口型 AI 应用
+  const defaultMode1Nodes = {
+    videoNode: { id: '228', fieldName: 'video' },
+    audioNode: { id: '125', fieldName: 'audio' },
+    durationNode: { id: '342', fieldName: 'text', value: '0:{{audioDuration}}' },
+    fpsNode: { id: '343', fieldName: 'value', value: '30' },
+    widthNode: { id: '345', fieldName: 'value', value: '720' },
+    heightNode: { id: '344', fieldName: 'value', value: '1280' },
+    textNode: { id: '347', fieldName: 'text' }
+  };
   // 云端模型2（网络节点02）
   const defaultMode2Nodes = { videoNode: { id: '1', fieldName: 'file' }, audioNode: { id: '7', fieldName: 'audio' }, textNode: { id: '12', fieldName: 'prompt' } };
   // 云端模型3（网络节点03）
@@ -510,8 +518,16 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
   const defaultMode6Nodes = { videoNode: { id: '85', fieldName: 'video' }, audioNode: { id: '4', fieldName: 'audio' } };
   // 云端模型7（网络节点07）
   const defaultMode7Nodes = { videoNode: { id: '3', fieldName: 'file' }, audioNode: { id: '2', fieldName: 'audio' } };
-  // 云端模型8（网络节点08，AI应用）
-  const defaultMode8Nodes = { videoNode: { id: '1', fieldName: 'file' }, audioNode: { id: '4', fieldName: 'audio' } };
+  // 云端模型8（网络节点08，AI应用）：数字人对口型
+  const defaultMode8Nodes = {
+    videoNode: { id: '228', fieldName: 'video' },
+    audioNode: { id: '125', fieldName: 'audio' },
+    durationNode: { id: '342', fieldName: 'text', value: '0:{{audioDuration}}' },
+    fpsNode: { id: '343', fieldName: 'value', value: '30' },
+    widthNode: { id: '345', fieldName: 'value', value: '720' },
+    heightNode: { id: '344', fieldName: 'value', value: '1280' },
+    textNode: { id: '347', fieldName: 'text' }
+  };
 
   let mode1Nodes: Record<string, any> = defaultMode1Nodes;
   let mode2Nodes: Record<string, any> = defaultMode2Nodes;
@@ -637,6 +653,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance6) {
       clientInstance6 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId6,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -657,6 +674,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance7) {
       clientInstance7 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId7,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -677,6 +695,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance8) {
       clientInstance8 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId8,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -697,6 +716,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance5) {
       clientInstance5 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId5,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -717,6 +737,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance4) {
       clientInstance4 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId4,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -737,6 +758,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance3) {
       clientInstance3 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId3,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -757,6 +779,7 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     }
     if (!clientInstance2) {
       clientInstance2 = new RunningHubClient({
+       apiKey,
        workflowId: workflowId2,
         apiVersion: 'v2',
         instanceType: 'default',
@@ -778,13 +801,14 @@ async function getClientAsync(mode?: string): Promise<RunningHubClient> {
     clientInstance1 = new RunningHubClient({
       apiKey,
       workflowId: workflowId1,
+      // 节点01 现为 AI 应用（数字人对口型），必须走 v2 接口
       apiVersion: 'v2',
       instanceType: 'default',
       nodes: mode1Nodes
     });
     cachedWorkflowId1 = workflowId1;
     cachedNodes1 = mode1NodesStr;
-    logger.info('[RunningHub] 创建v2客户端(mode1)', { workflowId: workflowId1, nodes: mode1Nodes });
+    logger.info('[RunningHub] 创建v1客户端(mode1)', { workflowId: workflowId1, nodes: mode1Nodes });
   }
   return clientInstance1;
 }

@@ -1263,9 +1263,8 @@ body[data-theme="soft-light"] .video-ip-agent-shell .dark-input-override.arco-in
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 14px 28px rgba(60, 90, 70, 0.11) !important;
 }
 
+/* 聚焦光圈只画在 wrapper 层，内层元素不叠 box-shadow（避免双层框） */
 body[data-theme="soft-light"] .video-ip-agent-shell .dark-input-override:focus-within,
-body[data-theme="soft-light"] .video-ip-agent-shell .dark-input-override:focus-within .arco-select-view,
-body[data-theme="soft-light"] .video-ip-agent-shell .dark-input-override:focus-within .arco-input-number,
 body[data-theme="soft-light"] .video-ip-agent-shell .dark-input-override.arco-select-view-focus,
 body[data-theme="soft-light"] .video-ip-agent-shell .dark-input-override.arco-input-number-focus {
     border-color: rgba(65, 145, 102, 0.48) !important;

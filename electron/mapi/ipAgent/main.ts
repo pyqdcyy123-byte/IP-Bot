@@ -3190,6 +3190,24 @@ ${titlesText}
 
             Log.info("ipAgent.saveSettings", { settings });
 
+            // 🔧 修复：设置未加载完成时的自动保存可能带着空的模型选择，
+            // 不能用空值覆盖用户已选的模型
+            try {
+                const settingsFilePath = getSettingsFilePath();
+                if (fs.existsSync(settingsFilePath)) {
+                    const existing = JSON.parse(fs.readFileSync(settingsFilePath, 'utf-8'));
+                    const modelKeys = ['textModelKey', 'voiceModelKey', 'asrModelKey', 'videoDigitalHumanModelKey'];
+                    for (const key of modelKeys) {
+                        if (!(typeof settings[key] === 'string' && settings[key].trim()) && existing[key]) {
+                            settings[key] = existing[key];
+                            Log.info("ipAgent.saveSettings.preserveModelKey", { key, value: existing[key] });
+                        }
+                    }
+                }
+            } catch (mergeError) {
+                Log.warn("ipAgent.saveSettings.mergeGuardFailed", { error: mergeError });
+            }
+
             ensureSettingsDir();
 
             const settingsFilePath = getSettingsFilePath();

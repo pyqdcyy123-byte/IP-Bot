@@ -45,9 +45,9 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 涓绘柟娉曪細鐢熸垚瀛楀箷
-   * @param config 瀛楀箷鐢熸垚閰嶇疆
-   * @returns 鐢熸垚缁撴灉
+   * 主方法：生成字幕
+   * @param config 字幕生成配置
+   * @returns 生成结果
    */
   async generate(config: ZimuConfig): Promise<GenerationResult> {
     const startTime = Date.now();
@@ -71,8 +71,8 @@ export class ZimuShengcheng {
         keywordGroupsCount: config.keywordGroups?.length || 0
       });
 
-      // 1. 鏂囨淇
-      console.log('[ZimuShengcheng] 姝ラ1: 鏂囨淇...');
+      // 1. 文案修正
+      console.log('[ZimuShengcheng] 步骤1: 文案修正...');
       this.correctedSegments = config.skipTextCorrection
         ? config.funasrSegments.map(seg => ({
             text: this.removePunctuation(String(seg?.text || '')),
@@ -88,10 +88,10 @@ export class ZimuShengcheng {
             config.funasrSegments
           );
 
-      // 馃啎 鍏抽敭淇锛氱洿鎺ヤ粠鏁版嵁搴撹幏鍙栨渶鏂扮殑鍏抽敭璇嶅垎缁勬暟鎹紝纭繚璐寸焊閰嶇疆鏄渶鏂扮殑
+      // 🆕 关键修复：直接从数据库获取最新的关键词分组数据，确保贴纸配置是最新的
       try {
-        console.log('[ZimuShengcheng] 馃攧 姝ｅ湪浠庢暟鎹簱鑾峰彇鏈€鏂板叧閿瘝鍒嗙粍鏁版嵁...');
-        // 鍔ㄦ€佸鍏ヤ互閬垮厤寰幆渚濊禆
+        console.log('[ZimuShengcheng] 🔄 正在从数据库获取最新关键词分组数据...');
+        // 动态导入以避免循环依赖
         const KeywordGroupService = (await import('./KeywordGroupService')).default;
         const freshGroups = await KeywordGroupService.getAllGroups();
 
@@ -110,15 +110,15 @@ export class ZimuShengcheng {
               }
             }
           });
-          console.log(`[ZimuShengcheng] 鉁?宸插悓姝?${updatedCount} 涓垎缁勭殑璐寸焊鏁版嵁`);
+          console.log(`[ZimuShengcheng] ✅宸插悓姝?${updatedCount} 个分组的贴纸数据`);
         }
       } catch (error) {
-        console.warn('[ZimuShengcheng] 鈿狅笍 鏃犳硶浠庢暟鎹簱鍚屾鏈€鏂板垎缁勬暟鎹?', error);
+        console.warn('[ZimuShengcheng] ⚠️ 鏃犳硶浠庢暟鎹簱鍚屾鏈€鏂板垎缁勬暟鎹?', error);
       }
 
       // 2. 鍏抽敭璇嶅尮閰?
-      console.log('[ZimuShengcheng] 姝ラ2: 鍏抽敭璇嶅尮閰?..');
-      console.log('[ZimuShengcheng] keywordGroups鍙傛暟:', {
+      console.log('[ZimuShengcheng] 步骤2: 鍏抽敭璇嶅尮閰?..');
+      console.log('[ZimuShengcheng] keywordGroups参数:', {
         hasKeywordGroups: !!config.keywordGroups,
         keywordGroupsLength: config.keywordGroups?.length || 0,
         keywordGroups: config.keywordGroups?.map((g: any) => ({
@@ -126,7 +126,7 @@ export class ZimuShengcheng {
           name: g.name,
           keywordsCount: g.keywords?.length || 0,
           effectId: g.effectId,
-          stickerId: g.stickerId,  // 馃攳 鍏抽敭锛氭鏌tickerId鏄惁瀛樺湪
+          stickerId: g.stickerId,  // 🔍 关键：检查stickerId是否存在
           stickerConfig: g.stickerConfig,
           keywords: g.keywords?.slice(0, 3)
         }))
@@ -141,20 +141,20 @@ export class ZimuShengcheng {
           keyword: m.keyword,
           effectType: m.effectType,
           isAnimated: m.isAnimated,
-          stickerId: (m as any).stickerId,  // 馃攳 鍏抽敭锛氭鏌tickerId鏄惁浼犻€?
+          stickerId: (m as any).stickerId,  // 🔍 关键：检查stickerId鏄惁浼犻€?
           stickerConfig: (m as any).stickerConfig,
           startTime: m.startTime,
           endTime: m.endTime
         }))
       });
 
-      // 3. 鏅鸿兘鎺掑垪
-      console.log('[ZimuShengcheng] 姝ラ3: 鏅鸿兘瀛楀箷鎺掑垪...');
+      // 3. 智能排列
+      console.log('[ZimuShengcheng] 步骤3: 智能字幕排列...');
 
-      // 馃攳 鍏抽敭璇婃柇锛氭鏌ョ涓€鏉″瓧骞曠殑鏃堕棿鍊?
+      // 🔍 鍏抽敭璇婃柇锛氭鏌ョ涓€鏉″瓧骞曠殑鏃堕棿鍊?
       if (this.correctedSegments.length > 0) {
         const firstSeg = this.correctedSegments[0];
-        console.log('[ZimuShengcheng] 鉁?绗竴鏉orrectedSegment鏃堕棿:', {
+        console.log('[ZimuShengcheng] ✅绗竴鏉orrectedSegment时间:', {
           start: firstSeg.start,
           end: firstSeg.end,
           startType: typeof firstSeg.start,
@@ -168,10 +168,10 @@ export class ZimuShengcheng {
         this.keywordMatches,
         config
       );
-      // 馃攳 鍏抽敭璇婃柇锛氭鏌ョ涓€鏉rrangedSubtitle鐨勬椂闂村€?
+      // 🔍 关键诊断：检查第一条arrangedSubtitle鐨勬椂闂村€?
       if (this.arrangedSubtitles.length > 0) {
         const firstArranged = this.arrangedSubtitles[0];
-        console.log('[ZimuShengcheng] 鉁?绗竴鏉rrangedSubtitle鏃堕棿:', {
+        console.log('[ZimuShengcheng] ✅绗竴鏉rrangedSubtitle时间:', {
           start: firstArranged.start,
           end: firstArranged.end,
           startType: typeof firstArranged.start,
@@ -181,42 +181,42 @@ export class ZimuShengcheng {
         });
       }
 
-      console.log(`[ZimuShengcheng] 瀛楀箷鎺掑垪瀹屾垚: ${this.arrangedSubtitles.length}鏉?(鏅€?${this.arrangedSubtitles.filter(s => s.type === 'normal').length} 鐗规晥:${this.arrangedSubtitles.filter(s => s.type !== 'normal').length})`);
+      console.log(`[ZimuShengcheng] 字幕排列完成: ${this.arrangedSubtitles.length}鏉?(鏅€?${this.arrangedSubtitles.filter(s => s.type === 'normal').length} 特效:${this.arrangedSubtitles.filter(s => s.type !== 'normal').length})`);
 
 
-      // 4. 鐢熸垚ASS鏂囦欢
-      console.log('[ZimuShengcheng] 姝ラ4: 鐢熸垚ASS鏂囦欢...');
+      // 4. 生成ASS文件
+      console.log('[ZimuShengcheng] 步骤4: 生成ASS文件...');
       const assFiles = await this.generateASSFiles(this.arrangedSubtitles, config);
 
-      // 5. 棰勮В鏋愭墍鏈夊瓧浣撹矾寰勶紙浣跨敤瀛椾綋绠＄悊鍣ˋPI鑾峰彇缁濆璺緞锛?
-      console.log('[ZimuShengcheng] 姝ラ5: 棰勮В鏋愬瓧浣撹矾寰?..');
-      // 鉁?鏂板锛氬鏋滃惎鐢ㄦ爣棰樺瓧骞曪紝涔熼渶瑕侀瑙ｆ瀽鏍囬瀛楀箷鐨勫瓧浣?
+      // 5. 预解析所有字体路径（使用字体管理器API鑾峰彇缁濆璺緞锛?
+      console.log('[ZimuShengcheng] 步骤5: 棰勮В鏋愬瓧浣撹矾寰?..');
+      // ✅鏂板锛氬鏋滃惎鐢ㄦ爣棰樺瓧骞曪紝涔熼渶瑕侀瑙ｆ瀽鏍囬瀛楀箷鐨勫瓧浣?
       if (config.titleSubtitleConfig && config.titleSubtitleConfig.enabled && config.titleSubtitleConfig.lines) {
         for (const line of config.titleSubtitleConfig.lines) {
           if (line.fontName) {
-            // 鉁?淇锛氬厛妫€鏌ョ紦瀛橈紝濡傛灉鏈夊氨鐩存帴浣跨敤锛屽惁鍒欒В鏋?
+            // ✅淇锛氬厛妫€鏌ョ紦瀛橈紝濡傛灉鏈夊氨鐩存帴浣跨敤锛屽惁鍒欒В鏋?
             if (this.fontPathCache.has(line.fontName)) {
               // 缂撳瓨鍛戒腑锛岀洿鎺ユ洿鏂?fontPath
               const cachedPath = this.fontPathCache.get(line.fontName)!;
               line.fontPath = cachedPath;
-              console.log(`[ZimuShengcheng] 鏍囬瀛楀箷瀛椾綋浣跨敤缂撳瓨: ${line.fontName} -> ${cachedPath}`);
+              console.log(`[ZimuShengcheng] 标题字幕字体使用缓存: ${line.fontName} -> ${cachedPath}`);
             } else {
               console.log(`[ZimuShengcheng] 棰勮В鏋愭爣棰樺瓧骞曞瓧浣? ${line.fontName}`);
-              // 浣跨敤瀛椾綋绠＄悊鍣ˋPI瑙ｆ瀽瀛椾綋璺緞
+              // 使用字体管理器API解析字体路径
               try {
                 if (typeof window !== 'undefined' && window.$mapi?.fontManager?.findFontPath) {
                   const result = await window.$mapi.fontManager.findFontPath(line.fontName, 400);
                   if (result && result.success && result.data) {
                     const safeFontPath = await this.copyFontToSafePath(result.data, line.fontName);
                     this.fontPathCache.set(line.fontName, safeFontPath);
-                    // 鉁?鏇存柊閰嶇疆涓殑瀛椾綋璺緞
+                    // ✅鏇存柊閰嶇疆涓殑瀛椾綋璺緞
                     line.fontPath = safeFontPath;
-                    console.log(`[ZimuShengcheng] 鏍囬瀛楀箷瀛椾綋瑙ｆ瀽鎴愬姛: ${line.fontName} -> ${safeFontPath}`);
+                    console.log(`[ZimuShengcheng] 标题字幕字体解析成功: ${line.fontName} -> ${safeFontPath}`);
                   }
                 }
               } catch (error) {
-                console.warn(`[ZimuShengcheng] 鏍囬瀛楀箷瀛椾綋瑙ｆ瀽澶辫触: ${line.fontName}`, error);
-                // 浣跨敤鍥為€€鏂规
+                console.warn(`[ZimuShengcheng] 标题字幕字体解析失败: ${line.fontName}`, error);
+                // 使用回退方案
                 const fallbackPath = this.resolveFontPathSync(line.fontName);
                 this.fontPathCache.set(line.fontName, fallbackPath);
                 line.fontPath = fallbackPath;
@@ -227,23 +227,23 @@ export class ZimuShengcheng {
       }
       await this.preResolveFontPaths(this.arrangedSubtitles);
 
-      // 6. 鐢熸垚drawtext鍛戒护
-      console.log('[ZimuShengcheng] 姝ラ6: 鐢熸垚drawtext鍛戒护...');
+      // 6. 生成drawtext命令
+      console.log('[ZimuShengcheng] 步骤6: 生成drawtext命令...');
       const drawtextCommands = this.generateDrawtextCommands(
         this.arrangedSubtitles,
         config.fontDir
       );
-      console.log('[ZimuShengcheng] drawtext鍛戒护鐢熸垚瀹屾垚:', {
+      console.log('[ZimuShengcheng] drawtext命令生成完成:', {
         commandCount: drawtextCommands.length,
         arrangedSubtitlesCount: this.arrangedSubtitles.length,
         normalCount: this.arrangedSubtitles.filter(s => s.type === 'normal').length,
         effectCount: this.arrangedSubtitles.filter(s => s.type !== 'normal').length
       });
 
-      // 馃啎 姝ラ 6.2: 鏀堕泦璐寸焊绱犳潗
-      console.log('[ZimuShengcheng] 姝ラ6.2: 鏀堕泦璐寸焊绱犳潗...');
+      // 🆕 步骤 6.2: 收集贴纸素材
+      console.log('[ZimuShengcheng] 步骤6.2: 收集贴纸素材...');
 
-      // 鑾峰彇璧勬簮璺緞
+      // 获取资源路径
       const path = await import('path');
       let resourcesPath = path.join(process.cwd(), 'electron/resources/extra');
 
@@ -252,16 +252,16 @@ export class ZimuShengcheng {
         if (window.$mapi && window.$mapi.app && window.$mapi.app.getResourcesPath) {
           // @ts-ignore
           resourcesPath = await window.$mapi.app.getResourcesPath();
-          console.log(`[ZimuShengcheng] 鉁?璧勬簮璺緞: ${resourcesPath}`);
+          console.log(`[ZimuShengcheng] ✅璧勬簮璺緞: ${resourcesPath}`);
         } else {
-          console.log(`[ZimuShengcheng] 鈩癸笍 浣跨敤 fallback 璧勬簮璺緞: ${resourcesPath}`);
+          console.log(`[ZimuShengcheng] ℹ️ 使用 fallback 资源路径: ${resourcesPath}`);
         }
       } catch (e) {
-        console.warn(`[ZimuShengcheng] 鈿狅笍 鑾峰彇璧勬簮璺緞澶辫触锛屼娇鐢?fallback: ${resourcesPath}`, e);
+        console.warn(`[ZimuShengcheng] ⚠️ 鑾峰彇璧勬簮璺緞澶辫触锛屼娇鐢?fallback: ${resourcesPath}`, e);
       }
 
       const stickerAssets = this.collectStickerAssets(this.arrangedSubtitles, resourcesPath);
-      console.log('[ZimuShengcheng] 璐寸焊绱犳潗鏀堕泦缁撴灉:', {
+      console.log('[ZimuShengcheng] 贴纸素材收集结果:', {
         count: stickerAssets.length,
         assets: stickerAssets.map(a => ({
           path: a.path,
@@ -269,25 +269,25 @@ export class ZimuShengcheng {
           instances: a.instances
         }))
       });
-      console.log('[ZimuShengcheng] 璐寸焊绱犳潗鏀堕泦瀹屾垚:', {
+      console.log('[ZimuShengcheng] 贴纸素材收集完成:', {
         uniqueStickers: stickerAssets.length,
         details: stickerAssets.map(s => ({ path: s.path, count: s.instances.length }))
       });
 
-      // 馃啎 姝ラ 6.5: 鐢熸垚闊虫晥锛堝鏋滃惎鐢級
+      // 🆕 步骤 6.5: 生成音效（如果启用）
       let soundAudioFilters: string[] = [];
       let soundInstances: any[] = [];
 
       if (config.soundEffectSettings?.enabled) {
-        console.log('[ZimuShengcheng] 姝ラ6.5: 鐢熸垚闊虫晥...');
+        console.log('[ZimuShengcheng] 步骤6.5: 生成音效...');
         try {
-          // 楠岃瘉闊虫晥閰嶇疆
+          // 验证音效配置
           const validation = SoundEffectGenerator.validateSoundConfig(config.keywordGroups);
           if (!validation.valid) {
-            console.warn('[ZimuShengcheng] 闊虫晥閰嶇疆楠岃瘉澶辫触:', validation.errors);
+            console.warn('[ZimuShengcheng] 音效配置验证失败:', validation.errors);
           }
 
-          // 鐢熸垚闊虫晥
+          // 生成音效
           const soundResult = await SoundEffectGenerator.generateSoundTrack(
             this.arrangedSubtitles,
             this.keywordMatches,
@@ -297,7 +297,7 @@ export class ZimuShengcheng {
           soundAudioFilters = soundResult.ffmpegAudioFilters;
           soundInstances = soundResult.soundInstances;
 
-          console.log('[ZimuShengcheng] 闊虫晥鐢熸垚瀹屾垚:', {
+          console.log('[ZimuShengcheng] 音效生成完成:', {
             soundInstancesCount: soundInstances.length,
             audioFiltersCount: soundAudioFilters.length
           });
@@ -307,10 +307,10 @@ export class ZimuShengcheng {
         }
       }
 
-      // 6.5 鐢熸垚鏍囬瀛楀箷drawtext鍛戒护锛堝鏋滃惎鐢級
+      // 6.5 生成标题字幕drawtext命令（如果启用）
       let titleDrawtextCommands: string[] = [];
       if (config.titleSubtitleConfig && config.titleSubtitleConfig.enabled) {
-        console.log('[ZimuShengcheng] 姝ラ6.5: 鐢熸垚鏍囬瀛楀箷...');
+        console.log('[ZimuShengcheng] 步骤6.5: 生成标题字幕...');
         try {
           titleDrawtextCommands = DrawtextGenerator.generateTitleSubtitle(
             config.titleSubtitleConfig,
@@ -318,56 +318,56 @@ export class ZimuShengcheng {
             config.videoHeight,
             this.normalizeMillisecondsToSeconds(config.videoDuration || 0)
           );
-          console.log('[ZimuShengcheng] 鏍囬瀛楀箷鐢熸垚瀹屾垚锛屽懡浠ゆ暟:', titleDrawtextCommands.length);
+          console.log('[ZimuShengcheng] 标题字幕生成完成，命令数:', titleDrawtextCommands.length);
         } catch (error) {
-          console.error('[ZimuShengcheng] 鏍囬瀛楀箷鐢熸垚澶辫触:', error);
+          console.error('[ZimuShengcheng] 标题字幕生成失败:', error);
           // 鏍囬瀛楀箷鐢熸垚澶辫触涓嶄腑鏂祦绋?
         }
       }
 
-      // 7. 鏋勫缓FFmpeg鍛戒护锛堢函drawtext鏂规锛氫笉鍐嶄娇鐢ˋSS鏂囦欢锛?
-      console.log('[ZimuShengcheng] 姝ラ7: 鏋勫缓FFmpeg鍛戒护锛堢函drawtext鏂规锛?..');
+      // 7. 构建FFmpeg命令（纯drawtext方案：不再使用ASS鏂囦欢锛?
+      console.log('[ZimuShengcheng] 步骤7: 构建FFmpeg命令（纯drawtext鏂规锛?..');
 
-      // 鉁?鍚堝苟鏍囬瀛楀箷鍜屾櫘閫氬瓧骞曠殑drawtext鍛戒护
-      // 鏍囬瀛楀箷浼樺厛娓叉煋锛堜綔涓哄簳灞傦級锛岀劧鍚庢槸鏅€氬瓧骞?鐗规晥瀛楀箷锛堜綔涓轰笂灞傦級
+      // ✅鍚堝苟鏍囬瀛楀箷鍜屾櫘閫氬瓧骞曠殑drawtext命令
+      // 鏍囬瀛楀箷浼樺厛娓叉煋锛堜綔涓哄簳灞傦級锛岀劧鍚庢槸鏅€氬瓧骞?特效字幕（作为上层）
       const combinedDrawtextCommands = [
         ...titleDrawtextCommands,  // 鏍囬瀛楀箷鍏堟坊鍔?
         ...drawtextCommands         // 鏅€?鐗规晥瀛楀箷鍚庢坊鍔?
       ];
 
-      // 銆愯皟璇曘€戣緭鍑?drawtextCommands 璇︽儏
-      console.log('[ZimuShengcheng] 鍚堝苟鍚庣殑 drawtextCommands 鏁伴噺:', combinedDrawtextCommands.length);
-      console.log('[ZimuShengcheng] 鍏朵腑鏍囬瀛楀箷:', titleDrawtextCommands.length, '鏅€氬瓧骞?', drawtextCommands.length);
+      // 銆愯皟璇曘€戣緭鍑?drawtextCommands 详情
+      console.log('[ZimuShengcheng] 合并后的 drawtextCommands 数量:', combinedDrawtextCommands.length);
+      console.log('[ZimuShengcheng] 其中标题字幕:', titleDrawtextCommands.length, '鏅€氬瓧骞?', drawtextCommands.length);
       combinedDrawtextCommands.forEach((cmd, i) => {
         console.log(`[ZimuShengcheng] drawtextCommand[${i}]:`, cmd.substring(0, 200) + (cmd.length > 200 ? '...' : ''));
       });
 
-      // 馃啎 鏂板锛氫紶閫掗煶鏁堝疄渚嬬敤浜庨煶棰戞贩闊?
+      // 🆕 鏂板锛氫紶閫掗煶鏁堝疄渚嬬敤浜庨煶棰戞贩闊?
       const ffmpegCmd = this.buildFFmpegCommand(
         config.videoPath,
         config.outputPath,
-        [], // 銆愮函drawtext鏂规銆戜笉鍐嶄紶閫扐SS鏂囦欢
-        combinedDrawtextCommands,  // 鉁?浣跨敤鍚堝苟鍚庣殑鍛戒护
+        [], // 【纯drawtext方案】不再传递ASS文件
+        combinedDrawtextCommands,  // ✅浣跨敤鍚堝苟鍚庣殑鍛戒护
         config.fontDir,
-        soundInstances,  // 闊虫晥瀹炰緥
-        stickerAssets    // 馃啎 璐寸焊绱犳潗
+        soundInstances,  // 音效实例
+        stickerAssets    // 🆕 贴纸素材
       );
 
-      // 8. 鎵ц娓叉煋
-      console.log('[ZimuShengcheng] 姝ラ8: 鎵цFFmpeg娓叉煋...');
+      // 8. 执行渲染
+      console.log('[ZimuShengcheng] 步骤8: 执行FFmpeg渲染...');
       const renderStartTime = Date.now();
       await this.executeFFmpeg(ffmpegCmd);
       this.statistics.renderTime = (Date.now() - renderStartTime) / 1000;
 
-      // 9. 鐢熸垚璋冭瘯鏂囦欢锛堝寘鍚墍鏈夊瓧骞曡缁嗕俊鎭級
-      console.log('[ZimuShengcheng] 姝ラ9: 鐢熸垚璋冭瘯鏂囦欢...');
+      // 9. 生成调试文件（包含所有字幕详细信息）
+      console.log('[ZimuShengcheng] 步骤9: 生成调试文件...');
       const debugPath = await this.generateDebugFile(this.arrangedSubtitles, drawtextCommands, config);
 
-      // 10. 鐢熸垚SRT鏂囦欢锛堢敤浜庡睍绀哄拰涓嬭浇锛?
-      console.log('[ZimuShengcheng] 姝ラ10: 鐢熸垚SRT鏂囦欢...');
+      // 10. 生成SRT鏂囦欢锛堢敤浜庡睍绀哄拰涓嬭浇锛?
+      console.log('[ZimuShengcheng] 步骤10: 生成SRT文件...');
       const srtPath = await this.generateSRTFile(this.correctedSegments, config);
 
-      // 11. 缁熻淇℃伅
+      // 11. 统计信息
       this.statistics.totalSegments = this.correctedSegments.length;
       this.statistics.correctedCount = this.correctedSegments.filter(s => s.corrected).length;
       this.statistics.keywordCount = this.keywordMatches.length;
@@ -377,18 +377,18 @@ export class ZimuShengcheng {
 
       console.log('[ZimuShengcheng] 字幕生成完成:', this.statistics);
 
-      // 馃啎 鐢讳腑鐢诲鐞嗭細鍦ㄥ瓧骞曠敓鎴愬畬鎴愬悗搴旂敤鐢讳腑鐢绘晥鏋?
+      // 🆕 鐢讳腑鐢诲鐞嗭細鍦ㄥ瓧骞曠敓鎴愬畬鎴愬悗搴旂敤鐢讳腑鐢绘晥鏋?
       let finalOutputPath = config.outputPath;
       if (config.videoMixCutSettings?.enabled) {
           try {
-              console.log('[ZimuShengcheng] 寮€濮嬪簲鐢ㄧ敾涓敾鏁堟灉...');
+              console.log('[ZimuShengcheng] 开始应用画中画效果...');
               const { FixedModeProcessor, KeywordModeProcessor, SubtitleModeProcessor, FFmpegCommandBuilder } =
                   await import('../lib/mixCutVideo');
 
               let replacements: any[] = [];
               const mixCutConfig = config.videoMixCutSettings;
 
-              // 鏍规嵁妯″紡澶勭悊
+              // 根据模式处理
               if (mixCutConfig.mode === 'fixed' && mixCutConfig.fixedModeConfig) {
                   console.log('[ZimuShengcheng] 使用固定模式处理画中画');
                   replacements = FixedModeProcessor.process(
@@ -396,13 +396,13 @@ export class ZimuShengcheng {
                       config.videoDuration || 0
                   );
               } else if (mixCutConfig.mode === 'keyword' && mixCutConfig.keywordModeConfig) {
-                  console.log('[ZimuShengcheng] 浣跨敤鍏抽敭璇嶆ā寮忓鐞嗙敾涓敾');
-                  // 鍏抽敭璇嶆ā寮忛渶瑕佸瓧骞曡褰曪紝杩欓噷鏆備笉鏀寔
+                  console.log('[ZimuShengcheng] 使用关键词模式处理画中画');
+                  // 关键词模式需要字幕记录，这里暂不支持
                   console.warn('[ZimuShengcheng] 关键词模式暂不支持');
               } else if (mixCutConfig.mode === 'subtitle' && mixCutConfig.subtitleModeConfig) {
                   console.log('[ZimuShengcheng] 使用字幕模式处理画中画');
-                  // 瀛楀箷妯″紡闇€瑕佸瓧骞曡褰曪紝杩欓噷鏆備笉鏀寔
-                  console.warn('[ZimuShengcheng] 瀛楀箷妯″紡鏆備笉鏀寔');
+                  // 字幕模式需要字幕记录，这里暂不支持
+                  console.warn('[ZimuShengcheng] 字幕模式暂不支持');
               }
 
               if (replacements.length > 0) {
@@ -412,20 +412,20 @@ export class ZimuShengcheng {
                   const ffmpegCmd = FFmpegCommandBuilder.buildOverlayCommand(
                       config.outputPath,  // 杈撳叆锛氬甫瀛楀箷鐨勮棰?
                       replacements,       // 鐢讳腑鐢荤墖娈甸厤缃?
-                      mixCutOutputPath,   // 杈撳嚭锛氬甫瀛楀箷+鐢讳腑鐢荤殑瑙嗛
+                      mixCutOutputPath,   // 输出：带字幕+画中画的视频
                       { width: config.videoWidth, height: config.videoHeight }
                   );
 
-                  console.log('[ZimuShengcheng] 鎵ц鐢讳腑鐢籉Fmpeg鍛戒护...');
+                  console.log('[ZimuShengcheng] 执行画中画FFmpeg命令...');
                   await this.executeFFmpeg(ffmpegCmd);
 
                   finalOutputPath = mixCutOutputPath;
-                  console.log('[ZimuShengcheng] 鉁?鐢讳腑鐢诲鐞嗗畬鎴?', finalOutputPath);
+                  console.log('[ZimuShengcheng] ✅鐢讳腑鐢诲鐞嗗畬鎴?', finalOutputPath);
               } else {
-                  console.log('[ZimuShengcheng] 娌℃湁鐢熸垚鐢讳腑鐢荤墖娈碉紝璺宠繃澶勭悊');
+                  console.log('[ZimuShengcheng] 没有生成画中画片段，跳过处理');
               }
           } catch (error: any) {
-              console.error('[ZimuShengcheng] 鉂?鐢讳腑鐢诲鐞嗗け璐?', error);
+              console.error('[ZimuShengcheng] ❌鐢讳腑鐢诲鐞嗗け璐?', error);
               // 涓嶆姏鍑洪敊璇紝缁х画杩斿洖鍘熻棰?
           }
       }
@@ -444,25 +444,25 @@ export class ZimuShengcheng {
         outputPath: finalOutputPath,
         srtPath: srtPath,
         debugPath: debugPath,
-        message: '瀛楀箷鐢熸垚鎴愬姛',
+        message: '字幕生成成功',
         statistics: this.statistics
       };
 
     } catch (error: any) {
-      console.error('[ZimuShengcheng] 瀛楀箷鐢熸垚澶辫触:', error);
+      console.error('[ZimuShengcheng] 字幕生成失败:', error);
       return {
         success: false,
-        message: '瀛楀箷鐢熸垚澶辫触: ' + error.message,
+        message: '字幕生成失败: ' + error.message,
         error
       };
     }
   }
 
-  // ==================== 姝ラ1: 鏂囨淇 ====================
+  // ==================== 步骤1: 文案修正 ====================
 
   /**
    * 绉婚櫎鏂囨湰涓殑鎵€鏈夋爣鐐圭鍙?
-   * 鍖呮嫭涓枃鏍囩偣銆佽嫳鏂囨爣鐐广€佺壒娈婄鍙风瓑
+   * 包括中文标点、英文标点、特殊符号等
    * @private
    */
   private removePunctuation(text: string): string {
@@ -470,18 +470,18 @@ export class ZimuShengcheng {
 
     // 涓枃鏍囩偣绗﹀彿锛氾紝銆傦紒锛燂紱锛氥€侊紙锛夈€屻€嶃€庛€忋€愩€戙€娿€嬧€︹€斅?"
     // 鑻辨枃鏍囩偣绗﹀彿锛?.!?;:()[]{}""''''
-    // 鍏朵粬绗﹀彿锛欯#$%^&*-_+=|\<>~`
+    // 其他符号：@#$%^&*-_+=|\<>~`
     const punctuationRegex = /[锛屻€傦紒锛燂紱锛氥€侊紙锛夈€屻€嶃€庛€忋€愩€戙€娿€嬧€︹€斅?"锛屻€傦紒锛燂紱锛氥€侊紙锛夈€屻€嶃€庛€忋€愩€戙€娿€嬧€︹€斅?.\\!?;:\\(\\)\\[\\]\\{\\}\"'"'"@#$%^&*\\-_+=|\\\\<>~`]/g;
 
     const cleaned = text.replace(punctuationRegex, ' ').replace(/\s+/g, ' ').trim();
 
-    // console.log(`[ZimuShengcheng.removePunctuation] 绉婚櫎鏍囩偣绗﹀彿: "${text}" -> "${cleaned}"`);
+    // console.log(`[ZimuShengcheng.removePunctuation] 移除标点符号: "${text}" -> "${cleaned}"`);
 
     return cleaned;
   }
 
   /**
-   * 淇ASR璇嗗埆缁撴灉锛屾浛鎹负鐢ㄦ埛杈撳叆鐨勬纭枃妗?
+   * 修正ASR璇嗗埆缁撴灉锛屾浛鎹负鐢ㄦ埛杈撳叆鐨勬纭枃妗?
    * @private
    */
   private correctText(
@@ -489,7 +489,7 @@ export class ZimuShengcheng {
     asrSegments: any[]
   ): CorrectedSegment[] {
     if (!userText || userText.trim() === '') {
-      // 濡傛灉鐢ㄦ埛娌℃湁杈撳叆鏂囨锛岀洿鎺ヤ娇鐢ˋSR缁撴灉
+      // 如果用户没有输入文案，直接使用ASR结果
       return asrSegments.map(seg => ({
         text: this.removePunctuation(seg.text),
         originalText: seg.text,
@@ -501,7 +501,7 @@ export class ZimuShengcheng {
       }));
     }
 
-    // 浣跨敤Levenshtein绠楁硶淇
+    // 使用Levenshtein算法修正
     // 使用Levenshtein算法修正
     const correctedSegments = LevenshteinMatcher.correctText(userText, asrSegments);
     const cleanedCorrectedSegments = correctedSegments.map(seg => ({
@@ -825,7 +825,7 @@ export class ZimuShengcheng {
     };
   }
 
-  // ==================== 姝ラ2: 鍏抽敭璇嶅尮閰?====================
+  // ==================== 步骤2: 鍏抽敭璇嶅尮閰?====================
 
   /**
    * 鍖归厤鍏抽敭璇嶏紝鎵惧嚭鍝簺鏂囧瓧闇€瑕佸簲鐢ㄧ壒鏁?
@@ -837,21 +837,21 @@ export class ZimuShengcheng {
   ): KeywordMatch[] {
     const matches: KeywordMatch[] = [];
 
-    // 馃敡 淇锛氫娇鐢?Set 杩借釜宸插尮閰嶇殑鍏抽敭璇嶏紝闃叉閲嶅
+    // 🔧 淇锛氫娇鐢?Set 追踪已匹配的关键词，防止重复
     const matchedPositions = new Set<string>();
 
     if (!keywordGroups || keywordGroups.length === 0) {
       return matches;
     }
 
-    console.log('[ZimuShengcheng.matchKeywords] 馃攳 寮€濮嬪尮閰嶅叧閿瘝:', {
+    console.log('[ZimuShengcheng.matchKeywords] 🔍 开始匹配关键词:', {
       keywordGroupsCount: keywordGroups.length,
       segmentsCount: segments.length
     });
 
-    // 馃攳 璋冭瘯锛氭鏌ユ瘡涓垎缁勭殑璐寸焊閰嶇疆
+    // 🔍 调试：检查每个分组的贴纸配置
     keywordGroups.forEach((group, idx) => {
-      console.log(`[ZimuShengcheng.matchKeywords] 鍒嗙粍 #${idx} "${group.name}" 璐寸焊閰嶇疆:`, {
+      console.log(`[ZimuShengcheng.matchKeywords] 分组 #${idx} "${group.name}" 贴纸配置:`, {
         stickerId: group.stickerId,
         hasStickerConfig: !!group.stickerConfig,
         rawGroup: group
@@ -869,14 +869,14 @@ export class ZimuShengcheng {
           const keyword = typeof kwObj === 'string' ? kwObj : kwObj.keyword;
           if (!keyword) continue;
 
-          // 娓呯悊鍏抽敭璇嶄腑鐨勬爣鐐圭鍙凤紝纭繚涓庡凡娓呯悊鐨勬枃鏈浉鍖归厤
+          // 清理关键词中的标点符号，确保与已清理的文本相匹配
           const cleanedKeyword = this.removePunctuation(keyword);
-          if (!cleanedKeyword) continue; // 濡傛灉娓呯悊鍚庝负绌猴紝璺宠繃
+          if (!cleanedKeyword) continue; // 如果清理后为空，跳过
 
-          // 鏌ユ壘鍏抽敭璇嶅湪鏂囨湰涓殑绗竴涓綅缃紙鍙尮閰嶄竴娆★級
+          // 查找关键词在文本中的第一个位置（只匹配一次）
           let pos = text.indexOf(cleanedKeyword, index);
           if (pos !== -1) {
-            // 馃敡 鍒涘缓鍞竴鐨勪綅缃甼ey锛岀敤浜庡幓閲?
+            // 🔧 创建唯一的位置key锛岀敤浜庡幓閲?
             const positionKey = `${segment.start.toFixed(3)}-${segment.end.toFixed(3)}-${cleanedKeyword}-${pos}`;
 
             // 濡傛灉璇ヤ綅缃殑鍏抽敭璇嶅凡缁忚鍖归厤杩囷紝璺宠繃锛堝彧淇濈暀绗竴涓垎缁勭殑鍖归厤锛?
@@ -888,10 +888,10 @@ export class ZimuShengcheng {
             matchedPositions.add(positionKey);
             console.log(`[ZimuShengcheng.matchKeywords] 匹配关键词: "${cleanedKeyword}"`);
 
-            // 馃敡 浼樺厛妫€鏌ュ崟涓叧閿瘝椤圭洰鐨勭壒鏁堬紝濡傛灉娌℃湁鍒欎娇鐢ㄥ垎缁勭骇鍒殑鐗规晥
+            // 🔧 优先检查单个关键词项目的特效，如果没有则使用分组级别的特效
             const keywordItem = typeof kwObj === 'string' ? null : kwObj;
 
-            // 浼樺厛绾э細鍗曚釜鍏抽敭璇嶉」鐩壒鏁?> 鍒嗙粍绾у埆鐗规晥 > 榛樿鐗规晥
+            // 浼樺厛绾э細鍗曚釜鍏抽敭璇嶉」鐩壒鏁?> 分组级别特效 > 默认特效
             let rawEffectId = keywordItem?.effectId || group.effectId || group.effectConfig?.type || 'pulse-scale';
 
             // 銆愯皟璇曟棩蹇椼€戞樉绀哄摢涓骇鍒殑鐗规晥琚娇鐢?
@@ -914,7 +914,7 @@ export class ZimuShengcheng {
             // 鍒ゆ柇鏄惁涓哄甫鍔ㄧ敾鐨勭壒鏁?
             const isAnimated = this.isAnimatedEffect(effectType);
 
-            // 銆愯皟璇曟棩蹇椼€戣褰昬ffectId杞崲鍜屽姩鐢诲垽鏂?
+            // 【调试日志】记录effectId杞崲鍜屽姩鐢诲垽鏂?
             if (rawEffectId || group.effectId) {
               console.log('[ZimuShengcheng] 关键词特效类型:', {
                 keyword,
@@ -926,19 +926,19 @@ export class ZimuShengcheng {
               });
             }
 
-            // 鏋勫缓鏍峰紡锛氫紭鍏堜娇鐢ㄥ崟涓叧閿瘝椤圭洰鐨勬牱寮忥紝鍏舵浣跨敤鍒嗙粍鏍峰紡
+            // 构建样式：优先使用单个关键词项目的样式，其次使用分组样式
             const style = keywordItem?.styleOverride ?
               this.buildKeywordStyleFromConfig(keywordItem.styleOverride) :
               this.buildKeywordStyle(group);
 
-            // 璁＄畻鏃堕棿
+            // 计算时间
             const { start: startTime, end: endTime } = this.getSegmentRangeTiming(
               segment,
               pos,
               pos + cleanedKeyword.length
             );
 
-            // 馃敡 浣跨敤鍗曚釜鍏抽敭璇嶉」鐩殑鐗规晥閰嶇疆锛屽鏋滄病鏈夊垯浣跨敤鍒嗙粍閰嶇疆
+            // 🔧 使用单个关键词项目的特效配置，如果没有则使用分组配置
             const itemEffectConfig = keywordItem?.effectConfig;
             const groupEffectConfig = group.effectConfig;
             const effectConfig = itemEffectConfig || groupEffectConfig || {
@@ -948,16 +948,16 @@ export class ZimuShengcheng {
               intensity: 0.8
             };
 
-            // 馃敡 淇锟斤拷锟芥纭鐞?effectDuration 鍗曚綅
-            // 纭繚 duration 浠ョ涓哄崟浣嶏紝鐒跺悗杞负姣
+            // 🔧 淇锟斤拷锟芥纭鐞?effectDuration 单位
+            // 确保 duration 以秒为单位，然后转为毫秒
             let durationInSeconds = itemEffectConfig?.duration || groupEffectConfig?.duration || this.config.minSubtitleDuration || 2;
 
-            // 濡傛灉 duration 宸茬粡寰堝ぇ锛堣秴杩?00锛夛紝鍋囪瀹冨凡缁忔槸姣锛岃浆鎹㈠洖绉?
+            // 如果 duration 宸茬粡寰堝ぇ锛堣秴杩?00锛夛紝鍋囪瀹冨凡缁忔槸姣锛岃浆鎹㈠洖绉?
             if (durationInSeconds > 100) {
               durationInSeconds = durationInSeconds / 1000;
             }
 
-            // 纭繚鏈€灏忔椂闀夸负 0.1 绉掞紝鏈€澶т负瀛楀箷瀹為檯鏃堕暱鐨?0鍊?
+            // 确保最小时长为 0.1 绉掞紝鏈€澶т负瀛楀箷瀹為檯鏃堕暱鐨?0鍊?
             const minDuration = 0.1;
             const maxDuration = (endTime - startTime) * 10;
             const finalDuration = Math.max(minDuration, Math.min(durationInSeconds, maxDuration));
@@ -973,13 +973,13 @@ export class ZimuShengcheng {
               effectType,
               isAnimated,
               style,
-              // 馃敡 瀹屾暣鐨勭壒鏁堥厤缃紙鏉ヨ嚜鍗曚釜璇嶆眹鎴栧垎缁勶級
+              // 🔧 完整的特效配置（来自单个词汇或分组）
               effectConfig,
               effectStyle: style,
               effectIntensity: itemEffectConfig?.intensity || groupEffectConfig?.intensity || 0.8,
-              // 杞崲涓烘绉掞紙纭繚鍗曚綅涓€鑷达級
+              // 转换为毫秒（确保单位一致）
               effectDuration: finalDuration * 1000,
-              // 馃啎 浼犻€掕创绾搁厤缃?- 浼樺厛浠庨《灞傝鍙栵紙涓庝繚瀛橀€昏緫涓€鑷达級
+              // 🆕 浼犻€掕创绾搁厤缃?- 优先从顶层读取（与保存逻辑一致）
               stickerId: (group as any).stickerId || group.styleOverride?.stickerId || group.styleConfig?.stickerId,
               stickerConfig: (group as any).stickerConfig || group.styleOverride?.stickerConfig || group.styleConfig?.stickerConfig
             };
@@ -996,7 +996,7 @@ export class ZimuShengcheng {
               endTime
             });
 
-            // 馃啎 鍙尮閰嶄竴娆★紝涓嶅啀缁х画鏌ユ壘璇ュ叧閿瘝鐨勫叾浠栧嚭鐜颁綅缃?
+            // 🆕 鍙尮閰嶄竴娆★紝涓嶅啀缁х画鏌ユ壘璇ュ叧閿瘝鐨勫叾浠栧嚭鐜颁綅缃?
           }
         }
       }
@@ -1007,13 +1007,13 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 灏?effectId锛坘ebab-case锛夎浆鎹负 SNAKE_CASE 鏍煎紡
+   * 灏?effectId（kebab-case）转换为 SNAKE_CASE 格式
    * 渚嬪锛?pulse-scale' -> 'PULSE_SCALE'
    * @private
    */
   private normalizeEffectType(effectId: string | undefined): string {
     if (!effectId || effectId === 'none') {
-      return 'PULSE_SCALE'; // 榛樿鐗规晥
+      return 'PULSE_SCALE'; // 默认特效
     }
 
     // 濡傛灉宸茬粡鏄?SNAKE_CASE 鏍煎紡锛岀洿鎺ヨ繑鍥?
@@ -1021,20 +1021,20 @@ export class ZimuShengcheng {
       return effectId;
     }
 
-    // 杞崲 kebab-case 鎴?camelCase 鍒?SNAKE_CASE
+    // 转换 kebab-case 鎴?camelCase 鍒?SNAKE_CASE
     return effectId
-      .replace(/-/g, '_')  // 灏嗚繛瀛楃鏇挎崲涓轰笅鍒掔嚎
-      .replace(/([a-z])([A-Z])/g, '$1_$2')  // 澶勭悊椹煎嘲鍛藉悕
-      .toUpperCase();  // 杞负澶у啓
+      .replace(/-/g, '_')  // 将连字符替换为下划线
+      .replace(/([a-z])([A-Z])/g, '$1_$2')  // 处理驼峰命名
+      .toUpperCase();  // 转为大写
   }
 
   /**
    * 鍒ゆ柇鐗规晥鏄惁涓哄甫鍔ㄧ敾鐨勭壒鏁?
    * @private
-   * 銆愬己鍒舵ā寮忋€戞墍鏈夊叧閿瘝閮戒娇鐢ㄥ姩鐢荤壒鏁堬紝涓嶅彈闄愬埗
+   * 【强制模式】所有关键词都使用动画特效，不受限制
    */
   private isAnimatedEffect(effectType: EffectType | string): boolean {
-    // 銆愬己鍒惰繑鍥?true銆戠‘淇濇墍鏈夊叧閿瘝閮芥樉绀轰负鍔ㄧ敾鐗规晥
+    // 銆愬己鍒惰繑鍥?true】确保所有关键词都显示为动画特效
     console.log(`[ZimuShengcheng.isAnimatedEffect] 强制返回 true, effectType=${effectType}`);
     return true;
   }
@@ -1044,10 +1044,10 @@ export class ZimuShengcheng {
    * @private
    */
   private buildKeywordStyle(group: any): any {
-    // 浼樺厛浣跨敤styleOverride锛屽叾娆tyleConfig锛屾渶鍚庝娇鐢ㄩ粯璁ゅ€?
+    // 优先使用styleOverride，其次styleConfig锛屾渶鍚庝娇鐢ㄩ粯璁ゅ€?
     const style = group.styleOverride || group.styleConfig || {};
 
-    // 鉁?娣诲姞璇婃柇鏃ュ織锛氳褰曟牱寮忔瀯寤鸿繃绋?
+    // ✅娣诲姞璇婃柇鏃ュ織锛氳褰曟牱寮忔瀯寤鸿繃绋?
     console.log('[ZimuShengcheng] 构建关键词样式:', {
       groupId: group.id,
       groupName: group.name,
@@ -1063,9 +1063,9 @@ export class ZimuShengcheng {
     return {
       fontName: style.fontName || this.config.subtitleStyle.fontName,
       fontSize: style.fontSize || this.config.subtitleStyle.fontSize * 1.5, // 鐗规晥瀛楀箷榛樿澶?.5鍊?
-      fontColor: style.fontColor || '#FFD700', // 榛樿閲戣壊
+      fontColor: style.fontColor || '#FFD700', // 默认金色
       outlineColor: style.outlineColor || '#FF8C00',
-      // 馃敡 淇锛氫娇鐢??? 鍏佽0鍊硷紙鏃犳弿杈癸級
+      // 🔧 淇锛氫娇鐢??? 允许0值（无描边）
       outlineWidth: style.outlineWidth ?? 4,
       shadowColor: style.shadowColor,
       shadowBlur: style.shadowBlur,
@@ -1076,7 +1076,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 馃敡 淇锛氫粠styleConfig鏋勫缓KeywordStyle
+   * 🔧 修复：从styleConfig构建KeywordStyle
    * @private
    */
   private buildKeywordStyleFromConfig(styleConfig: any): KeywordStyle {
@@ -1089,7 +1089,7 @@ export class ZimuShengcheng {
       fontSize: styleConfig.fontSize || this.config.subtitleStyle.fontSize * 1.5,
       fontColor: styleConfig.fontColor || '#FFD700',
       outlineColor: styleConfig.outlineColor || '#FF8C00',
-      // 馃敡 淇锛氫娇鐢??? 鍏佽0鍊硷紙鏃犳弿杈癸級
+      // 🔧 淇锛氫娇鐢??? 允许0值（无描边）
       outlineWidth: styleConfig.outlineWidth ?? 4,
       shadowColor: styleConfig.shadowColor,
       shadowBlur: styleConfig.shadowBlur,
@@ -1098,10 +1098,10 @@ export class ZimuShengcheng {
     };
   }
 
-  // ==================== 姝ラ3: 鏅鸿兘鎺掑垪 ====================
+  // ==================== 步骤3: 智能排列 ====================
 
   /**
-   * 鏅鸿兘鎺掑垪瀛楀箷锛屽鐞嗘崲琛屻€佹崲甯с€佺壒鏁堝瓧骞曞畾浣嶇瓑
+   * 智能排列字幕，处理换行、换帧、特效字幕定位等
    * @private
    */
   private arrangeSubtitles(
@@ -1111,41 +1111,41 @@ export class ZimuShengcheng {
   ): ArrangedSubtitle[] {
     const arranged: ArrangedSubtitle[] = [];
 
-    // 馃敡 娣诲姞鍏ㄥ眬鍘婚噸Set,闃叉鍚屼竴涓叧閿瘝琚涓猻egment閲嶅鍒涘缓
+    // 🔧 添加全局去重Set,防止同一个关键词被多个segment重复创建
     const createdEffectSubtitles = new Set<string>();
 
     // 璋冭瘯鏃ュ織锛氭鏌ラ厤缃?
-    console.log('[ZimuShengcheng.arrangeSubtitles] 馃敡 閰嶇疆妫€鏌?', {
+    console.log('[ZimuShengcheng.arrangeSubtitles] 🔧 閰嶇疆妫€鏌?', {
       configMinSubtitleDuration: config.minSubtitleDuration,
       thisConfigMinSubtitleDuration: this.config?.minSubtitleDuration,
       keywordsCount: keywords.length
     });
 
-    // 璁＄畻甯冨眬绾︽潫
+    // 计算布局约束
     const constraints = this.calculateLayoutConstraints(config);
 
-    // 馃敡 淇锛氳繃婊ゆ帀鍙寘鍚?\n 鎴栫┖鐧界殑 segments锛岄槻姝㈢敓鎴愮┖鐧藉瓧骞?
+    // 🔧 淇锛氳繃婊ゆ帀鍙寘鍚?\n 或空白的 segments锛岄槻姝㈢敓鎴愮┖鐧藉瓧骞?
     const validSegments = segments.filter(seg => {
       const trimmed = seg.text.trim();
-      // 鍙繚鐣欓潪绌虹殑涓斾笉鍙槸鎹㈣绗︾殑 segments
+      // 只保留非空的且不只是换行符的 segments
       const isValid = trimmed.length > 0 && !trimmed.match(/^[\s\n\r\t"'""'']+$/);
       if (!isValid && seg.text) {
-        console.log(`[ZimuShengcheng.arrangeSubtitles] 杩囨护鎺夌┖鐧芥: "${seg.text}"`, {
+        console.log(`[ZimuShengcheng.arrangeSubtitles] 过滤掉空白段: "${seg.text}"`, {
           originalText: seg.text,
           trimmed: trimmed,
-          reason: trimmed.length === 0 ? '瀹屽叏绌虹櫧' : '鍙寘鍚崲琛岀'
+          reason: trimmed.length === 0 ? '完全空白' : '只包含换行符'
         });
       }
       return isValid;
     });
 
-    console.log(`[ZimuShengcheng.arrangeSubtitles] Segment 杩囨护: ${segments.length} -> ${validSegments.length}`, {
+    console.log(`[ZimuShengcheng.arrangeSubtitles] Segment 过滤: ${segments.length} -> ${validSegments.length}`, {
       filtered: segments.length - validSegments.length
     });
 
     for (const segment of validSegments) {
-      // 妫€鏌ヨ娈垫槸鍚﹀寘鍚叧閿瘝
-      // 鏀逛负鍩轰簬鏃堕棿鐨勫尮閰嶏紝閬垮厤閲嶅鍖归厤
+      // 检查该段是否包含关键词
+      // 改为基于时间的匹配，避免重复匹配
       const segmentKeywords: KeywordMatch[] = [];
       console.log('[ZimuShengcheng] 检查 segment 中的关键词:', {
         segmentText: segment.text.substring(0, 30),
@@ -1155,11 +1155,11 @@ export class ZimuShengcheng {
 
       // 浣跨敤鏃堕棿鑼冨洿鍖归厤锛岃€屼笉鏄枃鏈悳绱?
       for (const kw of keywords) {
-        // 妫€鏌ュ叧閿瘝鐨勬椂闂存槸鍚︿笌褰撳墠segment閲嶅彔
+        // 检查关键词的时间是否与当前segment重叠
         if ((kw.startTime >= segment.start && kw.startTime < segment.end) ||
           (kw.endTime > segment.start && kw.endTime <= segment.end) ||
           (kw.startTime <= segment.start && kw.endTime >= segment.end)) {
-          // 鍏抽敭璇嶅嚭鐜板湪姝egment涓?
+          // 关键词出现在此segment涓?
           segmentKeywords.push(kw);
           console.log(`[ZimuShengcheng] 关键词时间匹配成功: "${kw.keyword}"`, {
             segmentTime: `${segment.start.toFixed(3)}-${segment.end.toFixed(3)}`,
@@ -1169,7 +1169,7 @@ export class ZimuShengcheng {
         }
       }
 
-      // 鉁?娣诲姞璇婃柇鏃ュ織
+      // ✅娣诲姞璇婃柇鏃ュ織
       if (segmentKeywords.length > 0) {
         console.log('[ZimuShengcheng] segment 中找到关键词:', {
           segmentText: segment.text.substring(0, 30),
@@ -1183,8 +1183,8 @@ export class ZimuShengcheng {
         });
       }
 
-      // 銆愭柊绛栫暐銆戞棤璁烘槸鍚︽湁鍏抽敭璇嶏紝閮藉垱寤轰竴涓畬鏁寸殑鏅€氬瓧骞曪紙鍖呭惈鎵€鏈夊師濮嬫枃鏈級
-      // 鏅€氬瓧骞曟樉绀哄畬鏁寸殑鍘熷鏂囨湰锛屾爣鐐圭鍙锋浛鎹负绌烘牸
+      // 【新策略】无论是否有关键词，都创建一个完整的普通字幕（包含所有原始文本）
+      // 普通字幕显示完整的原始文本，标点符号替换为空格
       const normalSubtitle = this.createNormalSubtitle(segment, config, constraints, segmentKeywords);
       if (normalSubtitle) {
         arranged.push(normalSubtitle);
@@ -1202,9 +1202,9 @@ export class ZimuShengcheng {
         continue;
       }
 
-      // 濡傛灉鏈夊叧閿瘝锛屼负姣忎釜鍏抽敭璇嶅垱寤虹壒鏁堝瓧骞?      // 鐗规晥瀛楀箷鍜屾櫘閫氬瓧骞曞苟琛屾樉绀猴紝浜掍笉骞叉壈
+      // 濡傛灉鏈夊叧閿瘝锛屼负姣忎釜鍏抽敭璇嶅垱寤虹壒鏁堝瓧骞?      // 特效字幕和普通字幕并行显示，互不干扰
       if (segmentKeywords.length > 0) {
-        // 馃敡 鍏抽敭淇锛氭鏌ユ槸鍚︽湁澶氫釜鍏抽敭璇嶅悓鏃跺嚭鐜?
+        // 🔧 鍏抽敭淇锛氭鏌ユ槸鍚︽湁澶氫釜鍏抽敭璇嶅悓鏃跺嚭鐜?
         // 濡傛灉鏈夊涓瓧骞曞悓鏃舵樉绀猴紝浣跨敤闈欐€佺壒鏁堣€屼笉鏄姩鐢荤壒鏁?
         // 杩欐牱鍙互閬垮厤鍔ㄧ敾浣嶇疆鍙樺寲瀵艰嚧鐨勮仛闆嗛棶棰?
         const hasMultipleSimultaneous = segmentKeywords.some((kw1, i) =>
@@ -1215,7 +1215,7 @@ export class ZimuShengcheng {
         );
 
         for (const keyword of segmentKeywords) {
-          // 馃敡 妫€鏌ユ槸鍚﹀凡缁忓垱寤鸿繃杩欎釜鐗规晥瀛楀箷(鍩轰簬鍏抽敭璇嶆枃鏈?鏃堕棿)
+          // 🔧 检查是否已经创建过这个特效字幕(鍩轰簬鍏抽敭璇嶆枃鏈?时间)
           const effectKey = `${keyword.keyword}-${keyword.startTime.toFixed(3)}-${keyword.endTime.toFixed(3)}`;
           if (createdEffectSubtitles.has(effectKey)) {
             console.log('[ZimuShengcheng] 跳过重复特效字幕:', {
@@ -1234,8 +1234,8 @@ export class ZimuShengcheng {
             isKeyword: true
           };
 
-          // 馃敡 鍏抽敭锛氬鏋滄湁澶氫釜瀛楀箷鍚屾椂鍑虹幇锛岄兘浣跨敤闈欐€佺壒鏁?
-          // 杩欐牱閬垮厤浜嗗姩鐢讳綅缃彉鍖栭棶棰橈紝淇濊瘉瀛楀箷鍋滅暀鍦ㄥ垎閰嶇殑浣嶇疆
+          // 🔧 鍏抽敭锛氬鏋滄湁澶氫釜瀛楀箷鍚屾椂鍑虹幇锛岄兘浣跨敤闈欐€佺壒鏁?
+          // 这样避免了动画位置变化问题，保证字幕停留在分配的位置
           if (keyword.isAnimated && !hasMultipleSimultaneous) {
             // 鍗曚釜瀛楀箷涓旀湁鍔ㄧ敾锛氬垱寤哄姩鐢荤壒鏁堝瓧骞?
             const effectSubtitle = this.createAnimatedEffectSubtitle(keywordPart, keyword, config);
@@ -1246,7 +1246,7 @@ export class ZimuShengcheng {
               type: effectSubtitle.type
             });
           } else {
-            // 澶氫釜鍚屾椂鍑虹幇 鎴?涓嶅甫鍔ㄧ敾锛氬垱寤洪潤鎬佺壒鏁堝瓧骞?
+            // 多个同时出现 鎴?涓嶅甫鍔ㄧ敾锛氬垱寤洪潤鎬佺壒鏁堝瓧骞?
             const effectSubtitle = this.createStaticEffectSubtitle(keywordPart, keyword, config);
             arranged.push(effectSubtitle);
             console.log('[ZimuShengcheng] 创建静态特效字幕:', {
@@ -1259,22 +1259,22 @@ export class ZimuShengcheng {
       }
     }
 
-    // 馃敡 鏀硅繘锛氭€绘槸鍚敤鏅鸿兘甯冨眬锛屼絾瀹冧細鏅鸿兘鍒ゆ柇鏄惁闇€瑕佽皟鏁?
+    // 🔧 鏀硅繘锛氭€绘槸鍚敤鏅鸿兘甯冨眬锛屼絾瀹冧細鏅鸿兘鍒ゆ柇鏄惁闇€瑕佽皟鏁?
     // 濡傛灉娌℃湁瀹為檯鐨勫爢鍙狅紙澶氫釜瀛楀箷鍚屾椂鏄剧ず锛夛紝瀹冨皢淇濇寔鐢ㄦ埛鐨勫師濮嬪潗鏍?
     // 濡傛灉鏈夊爢鍙狅紝鎵嶄細搴旂敤鍒嗘暎绠楁硶锛岄槻姝㈠瓧骞曢噸鍙?
 
-    console.log('[ZimuShengcheng.arrangeSubtitles] 鍚敤鏅鸿兘纰版挒妫€娴嬶紙鏅鸿兘妯″紡 - 浠呭湪鏈夊爢鍙犳椂璋冩暣锛?', {
+    console.log('[ZimuShengcheng.arrangeSubtitles] 启用智能碰撞检测（智能模式 - 浠呭湪鏈夊爢鍙犳椂璋冩暣锛?', {
       total: arranged.length,
       normal: arranged.filter(s => s.type === 'normal').length,
       effect_complex: arranged.filter(s => s.type === 'effect_complex').length,
       effect_simple: arranged.filter(s => s.type === 'effect_simple').length
     });
 
-    // 馃敡 淇绔栧睆瑙嗛瀛楀箷浣嶇疆锛氭娴嬭棰戞柟鍚戯紝涓虹珫灞忔坊鍔犳洿澶х殑瀹夊叏杈硅窛
+    // 🔧 修复竖屏视频字幕位置：检测视频方向，为竖屏添加更大的安全边距
     const isPortrait = config.videoHeight > config.videoWidth;
     // 瀵逛簬绔栧睆瑙嗛锛屼娇鐢ㄦ洿灏忕殑杈硅窛鐧惧垎姣旓紙纭繚瀛楀箷涓嶄細瓒呭嚭灞忓箷锛?
     // 绔栧睆锛氫娇鐢?4% 鐨勫瀭鐩磋竟璺濓紙鐩告瘮妯睆鐨?10%锛?
-    // 杩欐牱 1280px 楂樼殑瑙嗛锛歮argin = 51px锛堟瘮鍘熸潵鐨?128px 鏇村畨鍏級
+    // 这样 1280px 高的视频：margin = 51px锛堟瘮鍘熸潵鐨?128px 更安全）
     const verticalMarginPercent = isPortrait ? 0.04 : 0.1;
     const horizontalMarginPercent = isPortrait ? 0.05 : 0.1;
 
@@ -1285,33 +1285,33 @@ export class ZimuShengcheng {
       config.videoHeight * verticalMarginPercent    // verticalMargin
     );
 
-    // 馃敡 淇绔栧睆瑙嗛瀛楀箷Y鍧愭爣璁＄畻
+    // 🔧 修复竖屏视频字幕Y坐标计算
     // 鍏抽敭鏀硅繘锛?
-    // 1. 搴曢儴瀹夊叏鍖哄煙 = 瑙嗛楂樺害 - 瀛椾綋澶у皬 * 1.8 - 50px锛堜负涓嬮檷绾跨暀鍑虹┖闂达級
-    // 2. 椤堕儴瀹夊叏鍖哄煙 = 瀛椾綋澶у皬 + 50px
+    // 1. 底部安全区域 = 视频高度 - 字体大小 * 1.8 - 50px（为下降线留出空间）
+    // 2. 顶部安全区域 = 字体大小 + 50px
     const fontSize = config.subtitleStyle.fontSize || 48;
-    const bottomSafeY = config.videoHeight - fontSize * 1.8 - 50;  // 搴曢儴瀹夊叏Y鍧愭爣
-    const topSafeY = fontSize + 50;  // 椤堕儴瀹夊叏Y鍧愭爣
+    const bottomSafeY = config.videoHeight - fontSize * 1.8 - 50;  // 底部安全Y坐标
+    const topSafeY = fontSize + 50;  // 顶部安全Y坐标
 
-    // 馃敡 璁＄畻鐗规晥瀛楀箷鐨刌鍧愭爣
-    // 閲嶈锛氬鏋滅敤鎴峰湪璁剧疆鐣岄潰鏄庣‘璁剧疆浜嗗潗鏍囷紝淇濈暀鐢ㄦ埛璁剧疆锛堝嵆浣胯秴鍑哄畨鍏ㄨ寖鍥达級
-    // 鍙湁褰撶敤鎴蜂娇鐢ㄩ粯璁ゅ€兼椂锛屾墠搴旂敤瀹夊叏杈圭晫
+    // 🔧 计算特效字幕的Y坐标
+    // 重要：如果用户在设置界面明确设置了坐标，保留用户设置（即使超出安全范围）
+    // 只有当用户使用默认值时，才应用安全边界
     let effectSubtitleY: number;
     let isUserCustomY = false;
 
     if (config.effectSubtitleY !== undefined && config.effectSubtitleY !== null) {
-      // 鐢ㄦ埛鏄庣‘璁剧疆浜嗗潗鏍?- 淇濈暀鐢ㄦ埛璁剧疆
+      // 鐢ㄦ埛鏄庣‘璁剧疆浜嗗潗鏍?- 保留用户设置
       effectSubtitleY = config.videoHeight * (100 - config.effectSubtitleY) / 100;
       isUserCustomY = true;
       if (effectSubtitleY < topSafeY || effectSubtitleY > bottomSafeY) {
-        console.warn('[ZimuShengcheng.arrangeSubtitles] 鈿狅笍 鐢ㄦ埛璁剧疆鐨勭壒鏁堝瓧骞昚鍧愭爣瓒呭嚭瀹夊叏鑼冨洿:', {
+        console.warn('[ZimuShengcheng.arrangeSubtitles] ⚠️ 用户设置的特效字幕Y坐标超出安全范围:', {
           userY: effectSubtitleY,
-          瀹夊叏鑼冨洿: `${topSafeY}px - ${bottomSafeY}px`,
-          鎻愮ず: '杩欏彲鑳藉鑷村瓧骞曡秴鍑哄睆骞曪紝寤鸿璋冩暣璁剧疆'
+          安全范围: `${topSafeY}px - ${bottomSafeY}px`,
+          提示: '这可能导致字幕超出屏幕，建议调整设置'
         });
       }
     } else {
-      // 鐢ㄦ埛鏈缃潗鏍?- 浣跨敤淇鍚庣殑榛樿鍊硷紙甯﹀畨鍏ㄨ竟鐣岋級
+      // 鐢ㄦ埛鏈缃潗鏍?- 使用修复后的默认值（带安全边界）
       effectSubtitleY = bottomSafeY;
       isUserCustomY = false;
     }
@@ -1326,8 +1326,8 @@ export class ZimuShengcheng {
       fontSize
     });
 
-    // 璋冪敤鐗规晥瀛楀箷纰版挒妫€娴嬪拰宸﹀彸鍒嗘暎璋冩暣
-    console.log('[ZimuShengcheng.arrangeSubtitles] 馃攳 甯冨眬璋冩暣鍓嶏紝鐗规晥瀛楀箷浣嶇疆:', arranged
+    // 调用特效字幕碰撞检测和左右分散调整
+    console.log('[ZimuShengcheng.arrangeSubtitles] 🔍 布局调整前，特效字幕位置:', arranged
       .filter(s => s.type === 'effect_complex' || s.type === 'effect_simple')
       .slice(0, 5)
       .map((s, i) => ({
@@ -1349,11 +1349,11 @@ export class ZimuShengcheng {
         screenWidth: config.videoWidth,
         videoWidth: config.videoWidth,  // 閬胯璁＄畻闇€瑕?
         videoHeight: config.videoHeight,
-        avoidanceConfig: config.avoidanceConfig  // 馃敡 鍏抽敭锛氫紶鍏ラ伩璁╅厤缃?
+        avoidanceConfig: config.avoidanceConfig  // 🔧 鍏抽敭锛氫紶鍏ラ伩璁╅厤缃?
       }
     );
 
-    console.log('[ZimuShengcheng.arrangeSubtitles] 馃攳 甯冨眬璋冩暣鍚庯紝鐗规晥瀛楀箷浣嶇疆锛堣缁嗭級:', layoutResult
+    console.log('[ZimuShengcheng.arrangeSubtitles] 🔍 布局调整后，特效字幕位置（详细）:', layoutResult
       .filter(s => s.type === 'effect_complex' || s.type === 'effect_simple')
       .map((s, i) => ({
         index: i,
@@ -1365,46 +1365,46 @@ export class ZimuShengcheng {
       }))
     );
 
-    // 馃挕 鍏抽敭璇婃柇锛氭樉绀烘墍鏈夌壒鏁堝瓧骞曠殑X鍧愭爣
+    // 💡 关键诊断：显示所有特效字幕的X坐标
     const effectSubtitlesAfter = layoutResult.filter(s => s.type === 'effect_complex' || s.type === 'effect_simple');
-    console.log('[ZimuShengcheng.arrangeSubtitles] 馃挕 璋冩暣鍚庢墍鏈夌壒鏁堝瓧骞曠殑X鍧愭爣:');
+    console.log('[ZimuShengcheng.arrangeSubtitles] 💡 调整后所有特效字幕的X坐标:');
     effectSubtitlesAfter.forEach((s, i) => {
       console.log(`  [${i}] ${s.text}: x=${s.position.x.toFixed(0)}`);
     });
 
-    console.log('[ZimuShengcheng.arrangeSubtitles] 纰版挒妫€娴嬪畬鎴愶紝缁撴灉鏁伴噺:', layoutResult.length);
+    console.log('[ZimuShengcheng.arrangeSubtitles] 碰撞检测完成，结果数量:', layoutResult.length);
 
-    // 馃敡 鍏抽敭妫€鏌ワ細楠岃瘉SmartLayoutManager鍓嶅悗鐨勭壒鏁堝瓧骞曟暟閲忓拰浣嶇疆
+    // 🔧 关键检查：验证SmartLayoutManager前后的特效字幕数量和位置
     const effectSubtitlesBefore = arranged.filter(s => s.type === 'effect_complex' || s.type === 'effect_simple');
     const effectSubtitlesAfterLayout = layoutResult.filter(s => s.type === 'effect_complex' || s.type === 'effect_simple');
 
-    console.log('[ZimuShengcheng.arrangeSubtitles] 馃敡 SmartLayoutManager鍓嶅悗瀵规瘮:');
-    console.log(`  璋冪敤鍓嶇壒鏁堝瓧骞曟暟: ${effectSubtitlesBefore.length}`);
-    console.log(`  璋冪敤鍚庣壒鏁堝瓧骞曟暟: ${effectSubtitlesAfterLayout.length}`);
+    console.log('[ZimuShengcheng.arrangeSubtitles] 🔧 SmartLayoutManager前后对比:');
+    console.log(`  调用前特效字幕数: ${effectSubtitlesBefore.length}`);
+    console.log(`  调用后特效字幕数: ${effectSubtitlesAfterLayout.length}`);
 
     if (effectSubtitlesBefore.length === 0) {
-      console.warn('[ZimuShengcheng.arrangeSubtitles] 鈿狅笍 娌℃湁鎵惧埌鐗规晥瀛楀箷锛乤rranged鏁扮粍涓彲鑳芥病鏈夋纭殑瀛楀箷');
+      console.warn('[ZimuShengcheng.arrangeSubtitles] ⚠️ 没有找到特效字幕！arranged数组中可能没有正确的字幕');
     }
 
-    console.log('[ZimuShengcheng.arrangeSubtitles] 璋冪敤鍚庣殑鐗规晥瀛楀箷浣嶇疆:');
+    console.log('[ZimuShengcheng.arrangeSubtitles] 调用后的特效字幕位置:');
     effectSubtitlesAfterLayout.forEach((s, i) => {
-      console.log(`  [${i}] \"${s.text}\": x=${s.position.x.toFixed(0)} (搴旇!=960), type=${s.type}`);
+      console.log(`  [${i}] \"${s.text}\": x=${s.position.x.toFixed(0)} (应该!=960), type=${s.type}`);
     });
 
     if (effectSubtitlesAfterLayout.length > 0 && effectSubtitlesAfterLayout.every(s => Math.abs(s.position.x - 960) < 10)) {
-      console.error('[ZimuShengcheng.arrangeSubtitles] 鉂?涓ラ噸闂锛歋martLayoutManager娌℃湁淇敼鐗规晥瀛楀箷鐨勪綅缃紒鎵€鏈変綅缃兘杩樻槸960');
+      console.error('[ZimuShengcheng.arrangeSubtitles] ❌涓ラ噸闂锛歋martLayoutManager没有修改特效字幕的位置！所有位置都还是960');
     }
 
-    // 馃敡 鏈€鍚庣殑寮哄埗淇锛氭牴鎹椂闂撮噸鍙犲垎缁勭壒鏁堝瓧骞曪紝纭繚澶氫釜鍚屾椂鍑虹幇鐨勫瓧骞曡兘鍒嗘暎浣嶇疆
+    // 🔧 最后的强制修正：根据时间重叠分组特效字幕，确保多个同时出现的字幕能分散位置
     // 杩欐槸涓€涓?fallback锛屼互闃?SmartLayoutManager 娌℃湁姝ｇ‘璧蜂綔鐢?
     const effectSubtitleGroups: ArrangedSubtitle[][] = [];
 
     for (const subtitle of effectSubtitlesAfterLayout) {
-      // 馃敡 鏀硅繘锛氭鏌ヤ笌鐜版湁鍒嗙粍鏄惁鏈夋椂闂撮噸鍙狅紝鑰屼笉鏄‘鍒囧尮閰?
+      // 🔧 鏀硅繘锛氭鏌ヤ笌鐜版湁鍒嗙粍鏄惁鏈夋椂闂撮噸鍙狅紝鑰屼笉鏄‘鍒囧尮閰?
       let foundGroup = false;
 
       for (const group of effectSubtitleGroups) {
-        // 妫€鏌ュ綋鍓嶅瓧骞曟槸鍚︿笌璇ュ垎缁勪腑鐨勪换浣曞瓧骞曟湁鏃堕棿閲嶅彔
+        // 检查当前字幕是否与该分组中的任何字幕有时间重叠
         const hasOverlap = group.some(s =>
           (subtitle.start < s.end && subtitle.end > s.start)
         );
@@ -1416,13 +1416,13 @@ export class ZimuShengcheng {
         }
       }
 
-      // 濡傛灉娌℃湁鎵惧埌鏈夐噸鍙犵殑鍒嗙粍锛屽垱寤烘柊鍒嗙粍
+      // 如果没有找到有重叠的分组，创建新分组
       if (!foundGroup) {
         effectSubtitleGroups.push([subtitle]);
       }
     }
 
-    console.log('[ZimuShengcheng.arrangeSubtitles] 馃敡 寮哄埗浣嶇疆淇 - 鏃堕棿閲嶅彔鍒嗙粍:', {
+    console.log('[ZimuShengcheng.arrangeSubtitles] 🔧 强制位置修正 - 时间重叠分组:', {
       totalSubtitles: effectSubtitlesAfterLayout.length,
       groupCount: effectSubtitleGroups.length,
       groupSizes: effectSubtitleGroups.map(g => g.length)
@@ -1433,14 +1433,14 @@ export class ZimuShengcheng {
       const group = effectSubtitleGroups[groupIdx];
 
       if (group.length === 1) {
-        // 鍗曚釜瀛楀箷锛氫綅缃敱 SmartLayoutManager 璁＄畻锛屾棤闇€寮哄埗淇
-        // 銆愪慨澶嶃€戜笉鍐嶅己鍒惰缃綅缃紝淇濈暀 SmartLayoutManager 鐨勭粨鏋?
+        // 单个字幕：位置由 SmartLayoutManager 计算，无需强制修正
+        // 【修复】不再强制设置位置，保留 SmartLayoutManager 鐨勭粨鏋?
         const sub = group[0];
-        console.log(`[ZimuShengcheng.arrangeSubtitles] 鉁?鍗曚釜瀛楀箷淇濈暀SmartLayoutManager浣嶇疆: "${sub.text}" x=${sub.position.x.toFixed(0)}`);
+        console.log(`[ZimuShengcheng.arrangeSubtitles] ✅鍗曚釜瀛楀箷淇濈暀SmartLayoutManager位置: "${sub.text}" x=${sub.position.x.toFixed(0)}`);
       } else {
-        // 澶氫釜瀛楀箷鍚屾椂鍑虹幇锛氫綅缃敱 SmartLayoutManager 鐨?left-to-right 閫昏緫澶勭悊
-        // 銆愪慨澶嶃€戜笉鍐嶅己鍒惰缃綅缃紝淇濈暀 SmartLayoutManager 璁＄畻鐨勫乏鍒板彸鎺掑垪
-        console.log(`[ZimuShengcheng.arrangeSubtitles] 鉁?澶氬瓧骞曚繚鐣橲martLayoutManager鐨勫乏鍒板彸鎺掑垪: ${group.map(s => s.text).join(', ')}`);
+        // 多个字幕同时出现：位置由 SmartLayoutManager 鐨?left-to-right 逻辑处理
+        // 【修复】不再强制设置位置，保留 SmartLayoutManager 计算的左到右排列
+        console.log(`[ZimuShengcheng.arrangeSubtitles] ✅澶氬瓧骞曚繚鐣橲martLayoutManager的左到右排列: ${group.map(s => s.text).join(', ')}`);
         const positions = [
           config.videoWidth * 0.25,    // 绗竴涓? 宸?
           config.videoWidth * 0.5,     // 绗簩涓? 涓?
@@ -1448,8 +1448,8 @@ export class ZimuShengcheng {
         ];
 
         // 銆愪慨澶嶃€戜笉鍐嶅己鍒堕噸鏂板垎閰嶄綅缃?- SmartLayoutManager 宸茬粡澶勭悊浜嗗乏鍒板彸鐨勫畨鎺?
-        // 淇濈暀鍘熸湁鐨?SmartLayoutManager 璁＄畻缁撴灉
-        console.log(`[ZimuShengcheng.arrangeSubtitles] 鉁?澶氬瓧骞曠殑SmartLayoutManager浣嶇疆宸蹭繚鐣欙紙涓嶈鐩栵級:`,
+        // 淇濈暀鍘熸湁鐨?SmartLayoutManager 计算结果
+        console.log(`[ZimuShengcheng.arrangeSubtitles] ✅澶氬瓧骞曠殑SmartLayoutManager位置已保留（不覆盖）:`,
           group.map((s, i) => `[${i}] "${s.text}" x=${s.position.x.toFixed(0)}`).join(', ')
         );
       }
@@ -1457,7 +1457,7 @@ export class ZimuShengcheng {
 
     console.log(`[ZimuShengcheng.arrangeSubtitles] 强制位置修正完成，修正了 ${correctedCount} 个字幕`);
 
-    // 馃敡 鍚敤澶氳鎹㈣鍔熻兘锛氬鏅€氬瓧骞曡繘琛岃嚜鍔ㄦ崲琛屽鐞?
+    // 🔧 鍚敤澶氳鎹㈣鍔熻兘锛氬鏅€氬瓧骞曡繘琛岃嚜鍔ㄦ崲琛屽鐞?
     const normalSubtitles = layoutResult.filter(s => s.type === 'normal');
     const otherSubtitles = layoutResult.filter(s => s.type !== 'normal');
 
@@ -1475,20 +1475,20 @@ export class ZimuShengcheng {
       try {
         optimizedNormalSubtitles = this.optimizeLayout(normalSubtitles, constraints);
 
-        console.log('[ZimuShengcheng.arrangeSubtitles] 鑷姩鎹㈣澶勭悊瀹屾垚:', {
+        console.log('[ZimuShengcheng.arrangeSubtitles] 自动换行处理完成:', {
           before: normalSubtitles.length,
           after: optimizedNormalSubtitles.length,
           newLineCount: optimizedNormalSubtitles.length - normalSubtitles.length
         });
       } catch (err) {
-        console.error('[ZimuShengcheng.arrangeSubtitles] 鉂?optimizeLayout 涓ラ噸閿欒锛岄檷绾т娇鐢ㄥ師濮嬫櫘閫氬瓧骞?', err);
+        console.error('[ZimuShengcheng.arrangeSubtitles] ❌optimizeLayout 涓ラ噸閿欒锛岄檷绾т娇鐢ㄥ師濮嬫櫘閫氬瓧骞?', err);
         // 鍙戠敓閿欒鏃讹紝纭繚涓嶄涪澶卞瓧骞曪紝鐩存帴浣跨敤鍘熷鐨?normalSubtitles
         optimizedNormalSubtitles = normalSubtitles;
       }
 
       optimizedNormalSubtitles = this.normalizeArrangedNormalSubtitles(optimizedNormalSubtitles);
 
-      // 鍚堝苟浼樺寲鍚庣殑鏅€氬瓧骞曞拰鍏朵粬瀛楀箷
+      // 合并优化后的普通字幕和其他字幕
       return [...optimizedNormalSubtitles, ...otherSubtitles];
     }
 
@@ -1496,27 +1496,27 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 璁＄畻甯冨眬绾︽潫
+   * 计算布局约束
    * @private
    */
   private calculateLayoutConstraints(config: ZimuConfig): LayoutConstraints {
     const usableWidth = config.videoWidth * 0.8;
 
-    // 馃敡 銆愪慨澶嶃€戞牴鎹棰戞柟鍚戯紙妯睆/绔栧睆锛変娇鐢ㄤ笉鍚岀殑瀹夊叏绯绘暟
+    // 🔧 【修复】根据视频方向（横屏/竖屏）使用不同的安全系数
     // 绔栧睆瑙嗛鏈韩灏辩獎锛屼絾鐢ㄦ埛鍙嶉闀挎枃鏈粛浼氳瑁佹帀锛岄渶瑕佽繘涓€姝ュ噺灏忔瘮渚?
     // 妯睆瑙嗛瀹斤紝鍙互浣跨敤鏇翠繚瀹堢殑姣斾緥纭繚涓嶈秴鍑?
     const isPortrait = config.videoHeight > config.videoWidth;
-    // 馃敡 淇锛氭彁楂樺搴︽瘮渚嬪埌 0.75锛岀粰澶氳瑷€鍏呰冻鐨勬樉绀虹┖闂?
-    // 0.68 澶繚瀹堬紝瀵艰嚧淇勮銆佹棩鏂囩瓑鏂囧瓧杩囧害鎴柇
-    // 0.75 瀵规墍鏈夎瑷€閮芥洿鍙嬪ソ
+    // 🔧 修复：提高宽度比例到 0.75锛岀粰澶氳瑷€鍏呰冻鐨勬樉绀虹┖闂?
+    // 0.68 太保守，导致俄语、日文等文字过度截断
+    // 0.75 对所有语言都更友好
     const widthRatio = isPortrait ? 0.68 : 0.76;
 
     const conservativeUsableWidth = config.videoWidth * widthRatio;
     const maxCharsPerLine = Math.floor(conservativeUsableWidth / config.subtitleStyle.fontSize);
     const horizontalMargin = (config.videoWidth - conservativeUsableWidth) / 2;
 
-    // 馃敡 璋冭瘯锛氳緭鍑鸿绠楄繃绋嬶紝甯姪璇婃柇鎹㈣闂
-    console.log('[ZimuShengcheng.calculateLayoutConstraints] 馃挕 甯冨眬绾︽潫璁＄畻:', {
+    // 🔧 调试：输出计算过程，帮助诊断换行问题
+    console.log('[ZimuShengcheng.calculateLayoutConstraints] 💡 布局约束计算:', {
       videoWidth: config.videoWidth,
       videoHeight: config.videoHeight,
       isPortrait: isPortrait,
@@ -1527,38 +1527,38 @@ export class ZimuShengcheng {
       maxCharsPerLine: maxCharsPerLine,
       maxLines: 2,  // 闄愬埗鏈€澶?琛?
       horizontalMargin: horizontalMargin.toFixed(2),
-      note: `${isPortrait ? '绔栧睆' : '妯睆'}瑙嗛浣跨敤${widthRatio}姣斾緥`
+      note: `${isPortrait ? '竖屏' : '横屏'}视频使用${widthRatio}比例`
     });
 
     return {
-      maxLines: 6,  // 馃敡 鍏佽鏈€澶?琛屾媶鍒嗭紙姣忓抚2琛岋紝鏈€澶?甯э級锛屾墍鏈夊唴瀹瑰畬鏁存樉绀?
+      maxLines: 6,  // 🔧 鍏佽鏈€澶?行拆分（每帧2琛岋紝鏈€澶?甯э級锛屾墍鏈夊唴瀹瑰畬鏁存樉绀?
       maxCharsPerLine,
       lineHeight: config.subtitleStyle.fontSize * 1.12,
       horizontalMargin,
       verticalMargin: config.videoHeight * 0.08,
-      videoWidth: config.videoWidth,  // 馃敡 娣诲姞瑙嗛瀹藉害锛屼緵optimizeLayout浣跨敤
-      videoHeight: config.videoHeight,  // 馃敡 娣诲姞瑙嗛楂樺害锛屼緵optimizeLayout浣跨敤
+      videoWidth: config.videoWidth,  // 🔧 添加视频宽度，供optimizeLayout使用
+      videoHeight: config.videoHeight,  // 🔧 添加视频高度，供optimizeLayout使用
       effectSpacing: 2 // 鐗规晥瀛楀箷涓庢櫘閫氬瓧骞曠殑闂磋窛锛堝瓧绗︽暟锛?
     };
   }
 
   /**
    * 灏嗘爣鐐圭鍙锋浛鎹负绌烘牸浣滀负鍗犱綅绗?
-   * 鐢ㄤ簬淇濈暀鍘熷鏂囨湰鐨勪綅缃拰闀垮害
+   * 用于保留原始文本的位置和长度
    * @private
    */
   private normalizeTextForDisplay(text: string): string {
-    // 馃敡 鏀硅繘锛氬垹闄ゆ爣鐐圭鍙疯€屼笉鏄浛鎹负绌烘牸
-    // 鍘熷洜锛氭爣鐐规浛鎹负绌烘牸浼氬鑷存枃鏈彉闀匡紝浣跨敤鏇村灞忓箷瀹藉害
-    // 鍒犻櫎鏍囩偣鍙互璁╂枃鏈洿绱у噾锛岄槻姝㈣秴鍑哄睆骞曞彸杈圭晫
+    // 🔧 改进：删除标点符号而不是替换为空格
+    // 原因：标点替换为空格会导致文本变长，使用更多屏幕宽度
+    // 删除标点可以让文本更紧凑，防止超出屏幕右边界
 
-    // 鍒犻櫎涓枃鏍囩偣绗﹀彿 (鍖呮嫭涓枃寮曞彿"")
+    // 删除中文标点符号 (包括中文引号"")
     let normalized = text.replace(/[锛屻€傦紒锛燂紱锛氥€屻€嶃€庛€忥紙锛夈€?"]/g, '');
 
-    // 鍒犻櫎甯歌鑻辨枃鏍囩偣绗﹀彿
+    // 删除常见英文标点符号
     normalized = normalized.replace(/[,.!?;:\(\)\[\]{}"\'"]/g, '');
 
-    console.log(`[ZimuShengcheng.normalizeTextForDisplay] 鏍囩偣澶勭悊:`, {
+    console.log(`[ZimuShengcheng.normalizeTextForDisplay] 标点处理:`, {
       original: text.substring(0, 30),
       normalized: normalized.substring(0, 30),
       lengthBefore: text.length,
@@ -1580,7 +1580,7 @@ export class ZimuShengcheng {
     const text = segment.text;
     let lastIndex = 0;
 
-    // 鎸夊叧閿瘝浣嶇疆鎺掑簭
+    // 按关键词位置排序
     const sortedKeywords = keywords.sort((a, b) => a.startIndex - b.startIndex);
 
     for (const kw of sortedKeywords) {
@@ -1685,20 +1685,20 @@ export class ZimuShengcheng {
     constraints: LayoutConstraints,
     segmentKeywords: KeywordMatch[] = []
   ): ArrangedSubtitle | null {
-    // 馃敡 淇绔栧睆瑙嗛瀛楀箷浣嶇疆锛氭敼杩沋鍧愭爣璁＄畻
+    // 🔧 修复竖屏视频字幕位置：改进Y坐标计算
     const fontSize = config.subtitleStyle.fontSize || 48;
     const isPortrait = config.videoHeight > config.videoWidth;
 
-    // 馃搷 鏀硅繘鐨勫簳閮╕鍧愭爣璁＄畻锛?
-    // 鑰冭檻瀛椾綋涓嬮檷绾匡紙fontSize * 1.8锛夊拰瀹夊叏杈硅窛锛?0px锛?
+    // 📍 鏀硅繘鐨勫簳閮╕鍧愭爣璁＄畻锛?
+    // 考虑字体下降线（fontSize * 1.8锛夊拰瀹夊叏杈硅窛锛?0px锛?
     // 杩欑‘淇濇櫘閫氬瓧骞曚笉浼氳秴鍑哄睆骞曞簳閮?
     const bottomY = config.videoHeight - fontSize * 1.8 - 50;
 
-    // 娣诲姞杈圭晫鍊肩‘淇漎鍧愭爣濮嬬粓鏈夋晥
+    // 添加边界值确保Y坐标始终有效
     const topSafeY = fontSize + 50;
     const bottomSafeY = bottomY;
 
-    // 鏅€氬瓧骞曚娇鐢ㄥ師濮嬫椂闀匡紝涓嶅彈minSubtitleDuration褰卞搷
+    // 普通字幕使用原始时长，不受minSubtitleDuration影响
     // minSubtitleDuration浠呮帶鍒剁壒鏁堝瓧骞?
     const start = segment.start;
     const end = segment.end;
@@ -1732,16 +1732,16 @@ export class ZimuShengcheng {
 
     return {
       type: 'normal',
-      // 馃敡 淇濈暀鍘熷鏂囨湰锛堝甫鏍囩偣绗﹀彿锛夛紝鐢ㄤ簬鏅鸿兘鎹㈣
-      // normalize澶勭悊锛堟妸鏍囩偣绗﹀彿鏇挎崲鎴愮┖鏍硷級灏嗗湪generateDrawtextCommands鏃惰繘琛?
+      // 🔧 保留原始文本（带标点符号），用于智能换行
+      // normalize处理（把标点符号替换成空格）将在generateDrawtextCommands鏃惰繘琛?
       text: displayText,
       start,
       end,
       position: {
         x: anchorX,
-        // 馃敡 淇Y鍧愭爣锛?
+        // 🔧 修复Y鍧愭爣锛?
         // 濡傛灉鐢ㄦ埛鏄惧紡璁剧疆锛屼繚鐣欑敤鎴疯缃紙鍗充娇瓒呭嚭瀹夊叏鑼冨洿锛?
-        // 濡傛灉鏈缃紝浣跨敤淇鍚庣殑榛樿鍊硷紙鑰冭檻鏂囧瓧楂樺害鍜屽畨鍏ㄨ竟璺濓級
+        // 如果未设置，使用修复后的默认值（考虑文字高度和安全边距）
         y: (() => {
           const requestedPosition = config.subtitleStyle?.position || 'bottom';
           const manualY = config.normalSubtitleY !== undefined && config.normalSubtitleY !== null
@@ -1761,10 +1761,10 @@ export class ZimuShengcheng {
           );
 
           if (manualY !== null && isManualPositionCompatible) {
-            // 鐢ㄦ埛鏄庣‘璁剧疆浜嗗潗鏍?- 淇濈暀鐢ㄦ埛璁剧疆
+            // 鐢ㄦ埛鏄庣‘璁剧疆浜嗗潗鏍?- 保留用户设置
             const userY = Math.max(topSafeY, Math.min(manualY, bottomSafeY));
             if (userY < topSafeY || userY > bottomSafeY) {
-              console.warn('[createNormalSubtitle] 鈿狅笍 鐢ㄦ埛璁剧疆鐨勬櫘閫氬瓧骞昚瓒呭嚭瀹夊叏鑼冨洿:', { userY, 瀹夊叏鑼冨洿: `${topSafeY}-${bottomSafeY}` });
+              console.warn('[createNormalSubtitle] ⚠️ 用户设置的普通字幕Y超出安全范围:', { userY, 安全范围: `${topSafeY}-${bottomSafeY}` });
             }
             return userY;
           } else {
@@ -1786,13 +1786,13 @@ export class ZimuShengcheng {
         shadowColor: config.subtitleStyle.shadowColor,
         shadowBlur: config.subtitleStyle.shadowBlur
       },
-      layer: 'drawtext', // 銆愮函drawtext鏂规銆戞櫘閫氬瓧骞曚篃鐢╠rawtext娓叉煋
+      layer: 'drawtext', // 【纯drawtext方案】普通字幕也用drawtext渲染
       ...(displayDecision.suppressEffectSubtitle ? { _suppressEffectSubtitle: true } : {})
     };
   }
 
   /**
-   * 馃啎 鑾峰彇鍏抽敭璇嶇粍鐨勪綅缃厤缃?
+   * 🆕 鑾峰彇鍏抽敭璇嶇粍鐨勪綅缃厤缃?
    * @private
    */
   private getGroupPosition(groupName: string, config: ZimuConfig): import('./ZimuShengcheng.types').KeywordGroupPositionConfig | undefined {
@@ -1800,7 +1800,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 馃啎 浼扮畻瀛楀箷灏哄锛堢敤浜庣鎾炴娴嬶級
+   * 🆕 估算字幕尺寸（用于碰撞检测）
    * @private
    */
   private estimateSubtitleDimensions(
@@ -1808,22 +1808,22 @@ export class ZimuShengcheng {
     fontSize: number,
     fontName?: string
   ): { width: number; height: number } {
-    // 浼扮畻鍏紡锛堝熀浜庡父瑙佸瓧浣撶殑瀹介珮姣旓級
-    // 涓枃瀛楃锛氬搴︾害绛変簬 fontSize锛岄珮搴︾害绛変簬 fontSize
-    // 鑻辨枃瀛楃锛氬搴︾害绛変簬 fontSize * 0.6锛岄珮搴︾害绛変簬 fontSize
+    // 估算公式（基于常见字体的宽高比）
+    // 中文字符：宽度约等于 fontSize，高度约等于 fontSize
+    // 英文字符：宽度约等于 fontSize * 0.6，高度约等于 fontSize
 
     const chineseCharCount = (text.match(/[\u4e00-\u9fff]/g) || []).length;
     const englishCharCount = (text.match(/[a-zA-Z]/g) || []).length;
     const otherCharCount = text.length - chineseCharCount - englishCharCount;
 
-    // 浼扮畻瀹藉害锛堝儚绱狅級
+    // 估算宽度（像素）
     const estimatedWidth =
       (chineseCharCount * fontSize) +
       (englishCharCount * fontSize * 0.6) +
-      (otherCharCount * fontSize * 0.5) +  // 鏁板瓧銆佺鍙风瓑
+      (otherCharCount * fontSize * 0.5) +  // 数字、符号等
       (fontSize * 0.3);  // 瀛楅棿璺?
 
-    // 浼扮畻楂樺害锛堝儚绱狅級= 瀛椾綋楂樺害 + 涓婁笅杈硅窛
+    // 估算高度（像素）= 字体高度 + 上下边距
     const estimatedHeight = fontSize + fontSize * 0.3;
 
     return {
@@ -1833,7 +1833,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鍒涘缓甯﹀姩鐢荤殑鐗规晥瀛楀箷
+   * 创建带动画的特效字幕
    * @private
    */
   private createAnimatedEffectSubtitle(
@@ -1841,28 +1841,28 @@ export class ZimuShengcheng {
     keyword: KeywordMatch,
     config: ZimuConfig
   ): ArrangedSubtitle {
-    // 馃敡 淇锛氱壒鏁堝瓧骞曞簲璇ラ潬杩戞櫘閫氬瓧骞曞簳閮紝鑰屼笉鏄浐瀹氬湪涓婃柟30%
+    // 🔧 修复：特效字幕应该靠近普通字幕底部，而不是固定在上方30%
     // 瀵逛簬绔栧睆瑙嗛锛屽瓧骞曚綅缃渶瑕佺壒娈婂鐞?
     const isPortrait = config.videoHeight > config.videoWidth;
     const fontSize = config.subtitleStyle.fontSize || 48;
 
-    // 馃啎 鑾峰彇鍏抽敭璇嶇粍鐨勪綅缃厤缃?
+    // 🆕 鑾峰彇鍏抽敭璇嶇粍鐨勪綅缃厤缃?
     const groupPosition = this.getGroupPosition(keyword.groupName, config);
 
-    // 馃搷 鏀硅繘鐨刌鍧愭爣璁＄畻閫昏緫锛?
-    // 搴曢儴瀹夊叏浣嶇疆锛歷ideoHeight - fontSize * 1.8 - 50锛堣€冭檻涓嬮檷绾垮拰杈硅窛锛?
+    // 📍 鏀硅繘鐨刌鍧愭爣璁＄畻閫昏緫锛?
+    // 底部安全位置：videoHeight - fontSize * 1.8 - 50锛堣€冭檻涓嬮檷绾垮拰杈硅窛锛?
     // 杩欑‘淇濇枃瀛椾笉浼氳秴鍑哄睆骞曚笅鏂?
     const bottomY = config.videoHeight - fontSize * 1.8 - 50;
     const topY = bottomY - fontSize - 5; // 鐗规晥瀛楀箷鍦ㄦ櫘閫氬瓧骞曚笂鏂?
 
-    // 馃敡 淇锛氫娇鐢ㄥ叧閿瘝涓殑鏍峰紡閰嶇疆瑕嗙洊榛樿鏍峰紡
+    // 🔧 修复：使用关键词中的样式配置覆盖默认样式
     const effectStyle = {
       ...keyword.style,
       // 濡傛灉鍏抽敭璇嶆湁鐗规畩鏍峰紡锛屼娇鐢ㄥ叧閿瘝鐨勬牱寮?
       ...(keyword.effectStyle || {})
     };
 
-    // 馃敡 鏂板锛氬簲鐢ㄦ渶灏忔椂闀块檺鍒跺埌鐗规晥瀛楀箷
+    // 🔧 新增：应用最小时长限制到特效字幕
     let start = part.start;
     let end = part.end;
     const actualDuration = end - start;
@@ -1877,7 +1877,7 @@ export class ZimuShengcheng {
     }
 
     // 璋冭瘯鏃ュ織锛氳緭鍑洪厤缃殑鏈€灏忔椂闀?
-    console.log('[createAnimatedEffectSubtitle] 馃敡 璋冭瘯淇℃伅:', {
+    console.log('[createAnimatedEffectSubtitle] 🔧 调试信息:', {
       keyword: part.text,
       configMinDuration: config.minSubtitleDuration,
       thisConfigMinDuration: this.config?.minSubtitleDuration,
@@ -1886,18 +1886,18 @@ export class ZimuShengcheng {
       end
     });
 
-    // 馃啎 璁＄畻瀛楀箷灏哄锛堢敤浜庣鎾炴娴嬶級
+    // 🆕 计算字幕尺寸（用于碰撞检测）
     const dimensions = this.estimateSubtitleDimensions(part.text, fontSize);
 
-    // 馃啎 璁＄畻瀹為檯缁撴潫鏃堕棿锛堣€冭檻鍔ㄧ敾鏃堕暱锛?
-    // 馃敡 浼樺厛浣跨敤鍒嗙粍鐨?effectDuration锛屾病鏈夊垯浣跨敤鍏ㄥ眬榛樿鍊?
+    // 🆕 璁＄畻瀹為檯缁撴潫鏃堕棿锛堣€冭檻鍔ㄧ敾鏃堕暱锛?
+    // 🔧 浼樺厛浣跨敤鍒嗙粍鐨?effectDuration锛屾病鏈夊垯浣跨敤鍏ㄥ眬榛樿鍊?
     const keywordGroup = config.keywordGroups?.find(g => g.name === keyword.groupName);
     const groupEffectDuration = keywordGroup?.effectDuration;
     const animationDurationSeconds = groupEffectDuration ?? config.minSubtitleDuration ?? 2;
-    // 馃敡 淇锛歴tart/end 鏄绉掞紝闇€瑕佸皢绉掕浆鎹负姣
+    // 🔧 修复：start/end 是毫秒，需要将秒转换为毫秒
     const animationDurationMs = animationDurationSeconds * 1000;
     const actualEnd = Math.max(end, start + animationDurationMs);
-    console.log('[createAnimatedEffectSubtitle] effectiveEnd璁＄畻:', {
+    console.log('[createAnimatedEffectSubtitle] effectiveEnd计算:', {
       text: part.text,
       groupName: keyword.groupName,
       groupEffectDuration: groupEffectDuration,
@@ -1909,7 +1909,7 @@ export class ZimuShengcheng {
       effectiveEnd: actualEnd.toFixed(2)
     });
 
-    // 馃啎 浣跨敤Group浣嶇疆鎴栧叏灞€浣嶇疆
+    // 🆕 使用Group位置或全局位置
     const effectX = groupPosition?.effectX ?? config.effectSubtitleX ?? 50;
     const hasCustomEffectY = groupPosition?.effectY !== undefined ||
       (config.effectSubtitleY !== undefined && config.effectSubtitleY !== null);
@@ -1923,19 +1923,19 @@ export class ZimuShengcheng {
       start: start,
       end: end,
       position: {
-        // 馃啎 浣跨敤Group鍧愭爣鎴栧叏灞€鍧愭爣锛堢櫨鍒嗘瘮杞儚绱狅級
+        // 🆕 使用Group坐标或全局坐标（百分比转像素）
         x: config.videoWidth * effectX / 100,
-        // 馃啎 Y鍧愭爣璁＄畻锛氭湭鏄惧紡閰嶇疆鏃堕粯璁ゆ斁鍦ㄦ櫘閫氬瓧骞曚笂鏂癸紝閬垮厤鍜屽熀纭€瀛楀箷鍙犲瓧
+        // 🆕 Y坐标计算：未显式配置时默认放在普通字幕上方，避免和基础字幕叠字
         y: (() => {
-          const topBound = fontSize + 50;  // 椤堕儴瀹夊叏杈圭晫
-          const bottomBound = config.videoHeight - fontSize * 1.8 - 50;  // 搴曢儴瀹夊叏杈圭晫
+          const topBound = fontSize + 50;  // 顶部安全边界
+          const bottomBound = config.videoHeight - fontSize * 1.8 - 50;  // 底部安全边界
           const calcY = effectYPixel;
 
           if (calcY < topBound || calcY > bottomBound) {
-            console.warn('[createAnimatedEffectSubtitle] 鈿狅笍 璁剧疆鐨勭壒鏁堝瓧骞昚瓒呭嚭瀹夊叏鑼冨洿:', {
+            console.warn('[createAnimatedEffectSubtitle] ⚠️ 设置的特效字幕Y超出安全范围:', {
               groupName: keyword.groupName,
               calcY,
-              瀹夊叏鑼冨洿: `${topBound}-${bottomBound}`
+              安全范围: `${topBound}-${bottomBound}`
             });
           }
           return calcY;
@@ -1943,37 +1943,37 @@ export class ZimuShengcheng {
         alignment: 'center'
       },
 
-      // 馃啎 鏂板瀛楁
-      width: dimensions.width,          // 瀛楀箷瀹藉害
-      height: dimensions.height,        // 瀛楀箷楂樺害
-      keywordGroup: keyword.groupName,  // 鍏抽敭璇嶇粍鍚嶇О
+      // 🆕 新增字段
+      width: dimensions.width,          // 字幕宽度
+      height: dimensions.height,        // 字幕高度
+      keywordGroup: keyword.groupName,  // 关键词组名称
       effectiveEnd: actualEnd,          // 瀹為檯缁撴潫鏃堕棿锛堣€冭檻鍔ㄧ敾鏃堕暱锛?
 
       style: effectStyle,
-      layer: 'drawtext', // 浣跨敤drawtext娓叉煋
+      layer: 'drawtext', // 使用drawtext渲染
       animationConfig: {
         type: 'slide',
-        duration: animationDurationSeconds * 1000,  // 馃敡 浣跨敤鍒嗙粍鐨?effectDuration
+        duration: animationDurationSeconds * 1000,  // 🔧 浣跨敤鍒嗙粍鐨?effectDuration
         delay: 0,
-        // 馃敡 浠庡叧閿瘝鐨勭壒鏁堥厤缃腑鑾峰彇瀹屾暣鍙傛暟
+        // 🔧 从关键词的特效配置中获取完整参数
         intensity: keyword.effectIntensity || 0.8,
         parameters: {
           effectType: keyword.effectType || 'SLIDE_IN_UP',
-          // 馃敡 浼犻€掑畬鏁寸殑鐗规晥閰嶇疆鍙傛暟
+          // 🔧 传递完整的特效配置参数
           effectConfig: keyword.effectConfig,
           effectStyle: keyword.effectStyle,
-          // 馃敡 纭繚duration鍚屾锛氫娇鐢ㄥ垎缁勭殑 effectDuration
+          // 🔧 确保duration同步：使用分组的 effectDuration
           duration: animationDurationSeconds * 1000,
-          // 馃敡 鍏抽敭锛氭爣璁版鍔ㄧ敾闇€瑕佺瓑寰呬綅缃垎閰嶅畬鎴愬悗鍐嶇敓鎴?
+          // 🔧 鍏抽敭锛氭爣璁版鍔ㄧ敾闇€瑕佺瓑寰呬綅缃垎閰嶅畬鎴愬悗鍐嶇敓鎴?
           waitForPositionAssignment: true
         },
-        // 馃啎 浼犻€掕创绾镐俊鎭?
+        // 🆕 浼犻€掕创绾镐俊鎭?
         stickerId: keyword.stickerId,
         stickerConfig: keyword.stickerConfig
       }
     };
 
-    // 馃攳 璋冭瘯锛氳緭鍑鸿创绾镐俊鎭?
+    // 🔍 璋冭瘯锛氳緭鍑鸿创绾镐俊鎭?
     console.log(`[createAnimatedEffectSubtitle] 鍒涘缓鐗规晥瀛楀箷锛岃创绾镐俊鎭?`, {
       text: part.text,
       groupName: keyword.groupName,
@@ -1994,22 +1994,22 @@ export class ZimuShengcheng {
     keyword: KeywordMatch,
     config: ZimuConfig
   ): ArrangedSubtitle {
-    // 馃敡 淇绔栧睆瑙嗛瀛楀箷浣嶇疆锛氭敼杩沋鍧愭爣璁＄畻
+    // 🔧 修复竖屏视频字幕位置：改进Y坐标计算
     const fontSize = config.subtitleStyle.fontSize || 48;
     const isPortrait = config.videoHeight > config.videoWidth;
 
-    // 馃啎 鑾峰彇鍏抽敭璇嶇粍鐨勪綅缃厤缃?
+    // 🆕 鑾峰彇鍏抽敭璇嶇粍鐨勪綅缃厤缃?
     const groupPosition = this.getGroupPosition(keyword.groupName, config);
 
-    // 馃搷 鏀硅繘鐨勫簳閮╕鍧愭爣璁＄畻锛?
-    // 闈欐€佺壒鏁堝瓧骞曚篃浣跨敤瀹夊叏搴曢儴浣嶇疆
+    // 📍 鏀硅繘鐨勫簳閮╕鍧愭爣璁＄畻锛?
+    // 静态特效字幕也使用安全底部位置
     const bottomY = config.videoHeight - fontSize * 1.8 - 50;
 
     // 娣诲姞杈圭晫鍊?
     const topSafeY = fontSize + 50;
     const bottomSafeY = bottomY;
 
-    // 馃敡 鏂板锛氬簲鐢ㄦ渶灏忔椂闀块檺鍒跺埌闈欐€佺壒鏁堝瓧骞?
+    // 🔧 鏂板锛氬簲鐢ㄦ渶灏忔椂闀块檺鍒跺埌闈欐€佺壒鏁堝瓧骞?
     let start = part.start;
     let end = part.end;
     const actualDuration = end - start;
@@ -2023,10 +2023,10 @@ export class ZimuShengcheng {
       });
     }
 
-    // 馃啎 璁＄畻瀛楀箷灏哄
+    // 🆕 计算字幕尺寸
     const dimensions = this.estimateSubtitleDimensions(part.text, fontSize);
 
-    // 馃啎 浣跨敤Group浣嶇疆鎴栧叏灞€浣嶇疆
+    // 🆕 使用Group位置或全局位置
     const effectX = groupPosition?.effectX ?? config.effectSubtitleX ?? 50;
     const hasCustomEffectY = groupPosition?.effectY !== undefined ||
       (config.effectSubtitleY !== undefined && config.effectSubtitleY !== null);
@@ -2040,16 +2040,16 @@ export class ZimuShengcheng {
       start: start,
       end: end,
       position: {
-        // 馃啎 浣跨敤Group鍧愭爣鎴栧叏灞€鍧愭爣锛堢櫨鍒嗘瘮杞儚绱狅級
+        // 🆕 使用Group坐标或全局坐标（百分比转像素）
         x: config.videoWidth * effectX / 100,
-        // 馃啎 Y鍧愭爣璁＄畻锛氭湭鏄惧紡閰嶇疆鏃堕粯璁ゆ斁鍦ㄦ櫘閫氬瓧骞曚笂鏂癸紝閬垮厤鍜屽熀纭€瀛楀箷鍙犲瓧
+        // 🆕 Y坐标计算：未显式配置时默认放在普通字幕上方，避免和基础字幕叠字
         y: (() => {
           const calcY = effectYPixel;
           if (calcY < topSafeY || calcY > bottomSafeY) {
-            console.warn('[createStaticEffectSubtitle] 鈿狅笍 璁剧疆鐨勯潤鎬佺壒鏁堝瓧骞昚瓒呭嚭瀹夊叏鑼冨洿:', {
+            console.warn('[createStaticEffectSubtitle] ⚠️ 设置的静态特效字幕Y超出安全范围:', {
               groupName: keyword.groupName,
               calcY,
-              瀹夊叏鑼冨洿: `${topSafeY}-${bottomSafeY}`
+              安全范围: `${topSafeY}-${bottomSafeY}`
             });
           }
           return calcY;
@@ -2057,25 +2057,25 @@ export class ZimuShengcheng {
         alignment: 'center'
       },
 
-      // 馃啎 鏂板瀛楁
-      width: dimensions.width,          // 瀛楀箷瀹藉害
-      height: dimensions.height,        // 瀛楀箷楂樺害
-      keywordGroup: keyword.groupName,  // 鍏抽敭璇嶇粍鍚嶇О
+      // 🆕 新增字段
+      width: dimensions.width,          // 字幕宽度
+      height: dimensions.height,        // 字幕高度
+      keywordGroup: keyword.groupName,  // 关键词组名称
       effectiveEnd: end,                // 瀹為檯缁撴潫鏃堕棿锛堥潤鎬佺壒鏁堟棤鍔ㄧ敾鏃堕暱锛?
 
       style: keyword.style,
-      layer: 'ass_effect', // 浣跨敤ASS娓叉煋
-      // 馃啎 浼犻€掕创绾镐俊鎭?
+      layer: 'ass_effect', // 使用ASS渲染
+      // 🆕 浼犻€掕创绾镐俊鎭?
       stickerId: keyword.stickerId,
       stickerConfig: keyword.stickerConfig,
-      // 馃敡 淇锛氭坊鍔犵壒鏁堢被鍨嬮厤缃紝纭繚effect_simple涔熻兘搴旂敤姝ｇ‘鐨勭壒鏁?
+      // 🔧 修复：添加特效类型配置，确保effect_simple涔熻兘搴旂敤姝ｇ‘鐨勭壒鏁?
       animationConfig: keyword.effectType ? {
-        type: 'slide', // 鍔ㄧ敾绫诲瀷鍗犱綅
+        type: 'slide', // 动画类型占位
         duration: keyword.effectDuration || 2000,
         intensity: keyword.intensity || 0.8,
         delay: 0,
         parameters: {
-          effectType: keyword.effectType, // 淇濆瓨鐪熷疄鐨勭壒鏁堢被鍨嬶紙濡侱ANMAKU銆丄RC_TEXT锛?
+          effectType: keyword.effectType, // 保存真实的特效类型（如DANMAKU、ARC_TEXT锛?
           speed: keyword.speed || 1.0
         }
       } : undefined
@@ -2084,7 +2084,7 @@ export class ZimuShengcheng {
 
   /**
    * 浼樺寲甯冨眬锛堝鐞嗘崲琛屽拰鎹㈠抚閫昏緫锛?
-   * 閲嶆柊璁捐锛氬疄鐜板畬鏁寸殑鏅鸿兘鎺掔増閫昏緫
+   * 重新设计：实现完整的智能排版逻辑
    * @private
    */
   private optimizeLayout(
@@ -2094,30 +2094,30 @@ export class ZimuShengcheng {
     const optimized: ArrangedSubtitle[] = [];
     const MAX_LINES = constraints.maxLines || 2;
 
-    // 馃敡 鏀硅繘锛氭洿绮剧‘鐨勫搴﹁绠楋紝鑰冭檻瀹為檯瀛椾綋瀹藉害姣斾緥
-    // 鏍规嵁澶у鏁扮瓑瀹芥垨姣斾緥瀛椾綋鐨勭壒鎬э細
-    // - 涓枃瀛楃瀹藉害 鈮?瀛椾綋楂樺害锛堟鏂瑰舰锛?
-    // - 鑻辨枃瀛楁瘝骞冲潎瀹藉害 鈮?瀛椾綋楂樺害 * 0.5
-    // - 鏁板瓧瀹藉害 鈮?瀛椾綋楂樺害 * 0.5
-    // - 鏍囩偣绗﹀彿瀹藉害 鈮?瀛椾綋楂樺害 * 0.3
+    // 🔧 改进：更精确的宽度计算，考虑实际字体宽度比例
+    // 根据大多数等宽或比例字体的特性：
+    // - 中文字符宽度 ≥瀛椾綋楂樺害锛堟鏂瑰舰锛?
+    // - 英文字母平均宽度 ≥瀛椾綋楂樺害 * 0.5
+    // - 数字宽度 ≥瀛椾綋楂樺害 * 0.5
+    // - 标点符号宽度 ≥瀛椾綋楂樺害 * 0.3
     const calculateDisplayLength = (text: string): number => {
       let length = 0;
       for (const char of text) {
         if (/[\u4e00-\u9fff]/.test(char)) {
-          // 涓枃瀛楃锛氬崰1涓瓧浣撳搴?
+          // 中文字符：占1涓瓧浣撳搴?
           length += 1;
         } else if (/[\u3040-\u309f]/.test(char)) {
-          // 馃啎 鏃ユ枃骞冲亣鍚嶏紙銇?銈擄級锛氬崰1涓瓧浣撳搴?
+          // 🆕 鏃ユ枃骞冲亣鍚嶏紙銇?ん）：占1涓瓧浣撳搴?
           length += 1;
         } else if (/[\u30a0-\u30ff]/.test(char)) {
-          // 馃啎 鏃ユ枃鐗囧亣鍚嶏紙銈?銉达級锛氬崰1涓瓧浣撳搴?
+          // 🆕 鏃ユ枃鐗囧亣鍚嶏紙銈?ヴ）：占1涓瓧浣撳搴?
           length += 1;
         } else if (/[\uac00-\ud7af]/.test(char)) {
-          // 馃啎 闊╂枃锛堦皜-頌ｏ級锛氬崰1涓瓧浣撳搴?
+          // 🆕 韩文（가-힣）：占1涓瓧浣撳搴?
           length += 1;
         } else if (/[\u0400-\u04ff]/.test(char)) {
-          // 馃啎 瑗块噷灏斿瓧姣嶏紙淇勮銆佷箤鍏嬪叞璇瓑锛夛細鍗?.65涓瓧浣撳搴?
-          // 璁╀縿璇瓧绗︽洿鎺ヨ繎鑻辨枃瀹藉害锛岃繖鏍疯兘鏄剧ず鏇村鏂囧瓧
+          // 🆕 瑗块噷灏斿瓧姣嶏紙淇勮銆佷箤鍏嬪叞璇瓑锛夛細鍗?.65涓瓧浣撳搴?
+          // 让俄语字符更接近英文宽度，这样能显示更多文字
           length += 0.65;
         } else if (/[a-zA-Z0-9]/.test(char)) {
           // 鑻辨枃瀛楁瘝鍜屾暟瀛楋細鍗?.6涓瓧浣撳搴?
@@ -2133,21 +2133,21 @@ export class ZimuShengcheng {
       return length;
     };
 
-    // 鏅鸿兘鎹㈣锛氳タ鏂囨寜鍗曡瘝杈圭晫锛屼腑鏂囨寜瀛楃
-    // 馃敡 淇锛氶伩鍏嶆妸鍗曡瘝浠庝腑闂存埅鏂紙濡?"Zweig" 琚媶鎴?"Zwe" 鍜?"ig"锛?
+    // 智能换行：西文按单词边界，中文按字符
+    // 🔧 淇锛氶伩鍏嶆妸鍗曡瘝浠庝腑闂存埅鏂紙濡?"Zweig" 琚媶鎴?"Zwe" 鍜?"ig"锛?
     const smartLineBreak = (text: string, maxCharsPerLine: number): string[] => {
       const lines: string[] = [];
 
-      // 馃敡 銆愪慨澶嶃€戣皟鏁村畨鍏ㄧ郴鏁板埌 0.95锛岀粰浜堝厖瓒崇殑鏄剧ず绌洪棿
+      // 🔧 【修复】调整安全系数到 0.95，给予充足的显示空间
       const safetyMargin = 0.95;
       const safeMaxCharsPerLine = maxCharsPerLine * safetyMargin;
 
-      // 馃敡 鍒ゆ柇鏄惁涓昏鏄腑鏂?鏃ユ枃/闊╂枃鏂囨湰
+      // 🔧 鍒ゆ柇鏄惁涓昏鏄腑鏂?日文/韩文文本
       const cjkCharCount = (text.match(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
       const isMostlyCJK = cjkCharCount > text.length * 0.3;
 
       if (isMostlyCJK) {
-        // 馃敡 涓棩闊╂枃鏈細鎸夊瓧绗︽媶鍒嗭紙淇濇寔鍘熸湁閫昏緫锛?
+        // 🔧 涓棩闊╂枃鏈細鎸夊瓧绗︽媶鍒嗭紙淇濇寔鍘熸湁閫昏緫锛?
         let currentLine = '';
         let currentLength = 0;
 
@@ -2192,8 +2192,8 @@ export class ZimuShengcheng {
           }
         }
       } else {
-        // 馃敡 銆愬叧閿慨澶嶃€戣タ鏂囷紙鑻辨枃銆佸痉鏂囥€佷縿鏂囩瓑锛夛細鎸夊崟璇嶈竟鐣屾媶鍒?
-        // 閬垮厤鎶?"Zweig" 鎷嗘垚 "Zwe" 鍜?"ig"
+        // 🔧 銆愬叧閿慨澶嶃€戣タ鏂囷紙鑻辨枃銆佸痉鏂囥€佷縿鏂囩瓑锛夛細鎸夊崟璇嶈竟鐣屾媶鍒?
+        // 閬垮厤鎶?"Zweig" 拆成 "Zwe" 鍜?"ig"
         const words = text.split(/\s+/);
         let currentLine = '';
         let currentLength = 0;
@@ -2210,7 +2210,7 @@ export class ZimuShengcheng {
             currentLength = wordLength;
 
             if (lines.length >= MAX_LINES) {
-              // 宸茶揪鍒版渶澶ц鏁帮紝澶勭悊鍓╀綑鍐呭
+              // 已达到最大行数，处理剩余内容
               const remainingWords = words.slice(words.indexOf(word));
               let truncatedLine = remainingWords.join(' ');
               const truncatedLength = calculateDisplayLength(truncatedLine);
@@ -2221,7 +2221,7 @@ export class ZimuShengcheng {
                 let finalLength = 0;
                 for (const w of remainingWords) {
                   const wLen = calculateDisplayLength(w);
-                  const sLen = finalLine ? 0.3 : 0;  // 绌烘牸瀹藉害
+                  const sLen = finalLine ? 0.3 : 0;  // 空格宽度
                   if (finalLength + sLen + wLen <= maxCharsPerLine) {
                     finalLine += (finalLine ? ' ' : '') + w;
                     finalLength += sLen + wLen;
@@ -2239,7 +2239,7 @@ export class ZimuShengcheng {
               break;
             }
           } else {
-            // 娣诲姞鍗曡瘝鍒板綋鍓嶈
+            // 添加单词到当前行
             currentLine += (currentLine ? ' ' : '') + word;
             currentLength = calculateDisplayLength(currentLine);
           }
@@ -2251,43 +2251,43 @@ export class ZimuShengcheng {
         }
       }
 
-      // 馃敡 璇婃柇鏃ュ織锛堝凡绠€鍖栵級
-      // console.log('[ZimuShengcheng.smartLineBreak] 鉁?鎷嗗垎瀹屾垚:', { ... });
+      // 🔧 诊断日志（已简化）
+      // console.log('[ZimuShengcheng.smartLineBreak] ✅鎷嗗垎瀹屾垚:', { ... });
 
       return lines.slice(0, MAX_LINES);
     };
 
-    // 馃敡 璁＄畻鏂囨湰瀹藉害鐨勮緟鍔╁嚱鏁帮紙涓?SmartLayoutManager 淇濇寔涓€鑷达級
+    // 🔧 璁＄畻鏂囨湰瀹藉害鐨勮緟鍔╁嚱鏁帮紙涓?SmartLayoutManager 保持一致）
     const calculateTextWidth = (text: string, fontSize: number): number => {
       let width = 0;
       for (const char of text) {
         if (/[\u4e00-\u9fff]/.test(char)) {
-          width += fontSize * 0.9; // 涓枃瀛楃
+          width += fontSize * 0.9; // 中文字符
         } else if (/[\u3040-\u309f]/.test(char)) {
           width += fontSize * 0.9; // 鏃ユ枃骞冲亣鍚?
         } else if (/[\u30a0-\u30ff]/.test(char)) {
           width += fontSize * 0.9; // 鏃ユ枃鐗囧亣鍚?
         } else if (/[\uac00-\ud7af]/.test(char)) {
-          width += fontSize * 0.9; // 闊╂枃
+          width += fontSize * 0.9; // 韩文
         } else if (/[\u0400-\u04ff]/.test(char)) {
           width += fontSize * 0.65; // 瑗块噷灏斿瓧姣嶏紙淇勮銆佷箤鍏嬪叞璇瓑锛?
         } else if (/[a-zA-Z0-9]/.test(char)) {
           width += fontSize * 0.5; // 鑻辨枃瀛楁瘝鍜屾暟瀛?
         } else {
-          width += fontSize * 0.3; // 鍏朵粬瀛楃
+          width += fontSize * 0.3; // 其他字符
         }
       }
-      // 馃敡 銆愪慨澶嶃€戞瀬澶у箙搴﹀鍔犲畨鍏ㄧ郴鏁帮紝浠?1.6 -> 2.0锛岀‘淇濈粷瀵逛笉浼氳秴鍑哄睆骞?
+      // 🔧 銆愪慨澶嶃€戞瀬澶у箙搴﹀鍔犲畨鍏ㄧ郴鏁帮紝浠?1.6 -> 2.0锛岀‘淇濈粷瀵逛笉浼氳秴鍑哄睆骞?
       // FFmpeg drawtext 鐨勫疄闄呮覆鏌撳搴︿笌浼扮畻鍊煎樊寮傚緢澶э紝蹇呴』浣跨敤鏋侀珮鐨勫畨鍏ㄨ竟璺?
-      // 鐢ㄦ埛鍙嶉锛氬嵆浣?1.6 绯绘暟锛岄暱鏂囨湰鏈€鍚庣殑瀛椾粛浼氳瑁佹帀锛岃鏄庡疄闄呭搴﹁繙澶т簬浼扮畻
-      // 浣跨敤 2.0 绯绘暟鎰忓懗鐫€浼扮畻瀹藉害鏄疄闄呯殑涓ゅ€嶏紝纭繚缁濆瀹夊叏
+      // 鐢ㄦ埛鍙嶉锛氬嵆浣?1.6 系数，长文本最后的字仍会被裁掉，说明实际宽度远大于估算
+      // 使用 2.0 系数意味着估算宽度是实际的两倍，确保绝对安全
       return width * 2.0;
     };
 
-    // 馃敡 淇锛氱洿鎺ヤ娇鐢ㄥ疄闄呯殑瑙嗛瀹藉害锛岃€屼笉鏄及绠?
-    // 浠巆onstraints鎺ㄥ锛歝onstraints.maxCharsPerLine = (videoWidth * 0.8) / fontSize
+    // 🔧 淇锛氱洿鎺ヤ娇鐢ㄥ疄闄呯殑瑙嗛瀹藉害锛岃€屼笉鏄及绠?
+    // 从constraints推导：constraints.maxCharsPerLine = (videoWidth * 0.8) / fontSize
     // 鎵€浠?videoWidth = (maxCharsPerLine * fontSize) / 0.8
-    // 浣嗘渶鐩存帴鐨勬柟寮忥細usableWidth = videoWidth * 0.8锛宼herefore videoWidth = usableWidth / 0.8
+    // 但最直接的方式：usableWidth = videoWidth * 0.8，therefore videoWidth = usableWidth / 0.8
     // 鑰?horizontalMargin = videoWidth * 0.1锛屾墍浠?videoWidth = horizontalMargin * 10
     const firstSubtitle = subtitles[0];
     if (!firstSubtitle) {
@@ -2295,16 +2295,16 @@ export class ZimuShengcheng {
     }
     const estimatedScreenWidth = constraints.videoWidth;
 
-    // 澶勭悊姣忎釜瀛楀箷
+    // 处理每个字幕
     for (const subtitle of subtitles) {
-      // 馃敡 銆愬叧閿鏌ャ€戝鏋滃瓧骞曞凡缁忓湪 VideoSubtitle.ts 涓垎鎵瑰鐞嗚繃锛岃烦杩?optimizeLayout
+      // 🔧 【关键检查】如果字幕已经在 VideoSubtitle.ts 涓垎鎵瑰鐞嗚繃锛岃烦杩?optimizeLayout
       // 杩欎簺瀛楀箷宸茬粡鏈夋纭殑鏃堕棿鍒嗛厤锛屼笉搴旇鍐嶈鎷嗗垎鎴愬琛屽悓鏃舵樉绀?
       if ((subtitle as any)._skipOptimizeLayout) {
-        console.log('[ZimuShengcheng.optimizeLayout] 鈴笍  璺宠繃宸插垎鎵瑰瓧骞?', {
+        console.log('[ZimuShengcheng.optimizeLayout] ⏭️  璺宠繃宸插垎鎵瑰瓧骞?', {
           text: subtitle.text.substring(0, 30),
           start: subtitle.start,
           end: subtitle.end,
-          reason: '姝ゅ瓧骞曞凡缁忚繃鍒嗘壒澶勭悊锛屼笉闇€瑕佸啀娆′紭鍖栧竷灞€'
+          reason: '此字幕已经过分批处理，不需要再次优化布局'
         });
         optimized.push(subtitle);
         continue;
@@ -2312,30 +2312,30 @@ export class ZimuShengcheng {
 
       const displayLength = calculateDisplayLength(subtitle.text);
 
-      // 馃敡 娣诲姞杈圭晫妫€鏌ワ細纭繚瀛楀箷鏂囨湰涓嶈秴鍑哄睆骞?
+      // 🔧 娣诲姞杈圭晫妫€鏌ワ細纭繚瀛楀箷鏂囨湰涓嶈秴鍑哄睆骞?
       let textWidth = calculateTextWidth(subtitle.text, subtitle.style.fontSize);
 
-      // 馃敡 銆愭柊澧炪€戝鏋滃瓧骞曟湁鑳屾櫙锛屽鍔犲搴︽潵琛ュ伩鍓嶅悗娣诲姞鐨勭┖鏍?
-      // DrawtextGenerator 涓細涓烘湁鑳屾櫙鐨勫瓧骞曞墠鍚庡悇娣诲姞4涓崐瑙掔┖鏍?
-      // 姣忎釜鍗婅绌烘牸瀹藉害绾︿负 fontSize * 0.3锛屾墍浠ユ€诲鍔?4*2*0.3 = 2.4*fontSize
+      // 🔧 銆愭柊澧炪€戝鏋滃瓧骞曟湁鑳屾櫙锛屽鍔犲搴︽潵琛ュ伩鍓嶅悗娣诲姞鐨勭┖鏍?
+      // DrawtextGenerator 中会为有背景的字幕前后各添加4涓崐瑙掔┖鏍?
+      // 每个半角空格宽度约为 fontSize * 0.3锛屾墍浠ユ€诲鍔?4*2*0.3 = 2.4*fontSize
       const hasBackground = subtitle.style.backgroundColor &&
         subtitle.style.backgroundColor !== 'transparent' &&
         subtitle.style.backgroundOpacity !== undefined &&
         subtitle.style.backgroundOpacity > 0;
       if (hasBackground) {
-        const spaceWidth = subtitle.style.fontSize * 2.4;  // 鍓嶅悗鍚?涓┖鏍肩殑瀹藉害
+        const spaceWidth = subtitle.style.fontSize * 2.4;  // 鍓嶅悗鍚?个空格的宽度
         textWidth += spaceWidth;
-        // console.log('[ZimuShengcheng.optimizeLayout] 馃敡 瀛楀箷鏈夎儗鏅紝澧炲姞瀹藉害琛ュ伩绌烘牸:', { ... });
+        // console.log('[ZimuShengcheng.optimizeLayout] 🔧 字幕有背景，增加宽度补偿空格:', { ... });
       }
 
       const maxTextWidth = estimatedScreenWidth - 2 * constraints.horizontalMargin;
 
-      // 馃敡 鍏抽敭淇锛氭鏌ユ枃鏈槸鍚﹀お闀匡紝鏃犺濡備綍璋冩暣閮戒細瓒呭嚭灞忓箷
+      // 🔧 关键修复：检查文本是否太长，无论如何调整都会超出屏幕
       // 濡傛灉鏄紝寮哄埗鏍囪涓洪渶瑕佹崲琛?
       let forceLineBreak = false;
       if (textWidth > maxTextWidth) {
         forceLineBreak = true;
-        console.warn('[ZimuShengcheng.optimizeLayout] 鈿狅笍 鏂囨湰瀹藉害瓒呰繃鍙敤灞忓箷瀹藉害锛屽己鍒舵崲琛?', {
+        console.warn('[ZimuShengcheng.optimizeLayout] ⚠️ 鏂囨湰瀹藉害瓒呰繃鍙敤灞忓箷瀹藉害锛屽己鍒舵崲琛?', {
           text: subtitle.text.substring(0, 50),
           textWidth: textWidth.toFixed(2),
           maxTextWidth: maxTextWidth.toFixed(2),
@@ -2343,29 +2343,29 @@ export class ZimuShengcheng {
         });
       }
 
-      // 馃敡 鏅鸿兘璋冩暣绛栫暐 - 鐭枃鏈娇鐢ㄥ睆骞曚腑蹇冿紝闀挎枃鏈皟鏁翠互闃茶秴鍑哄睆骞?
+      // 🔧 智能调整策略 - 鐭枃鏈娇鐢ㄥ睆骞曚腑蹇冿紝闀挎枃鏈皟鏁翠互闃茶秴鍑哄睆骞?
       const screenCenterX = estimatedScreenWidth / 2;
       const leftBound = constraints.horizontalMargin + textWidth / 2;
       const rightBound = estimatedScreenWidth - constraints.horizontalMargin - textWidth / 2;
 
-      let adjustedX = screenCenterX;  // 榛樿浣跨敤灞忓箷涓績
-      let positionAdjustmentReason = '浣跨敤灞忓箷涓績';
+      let adjustedX = screenCenterX;  // 默认使用屏幕中心
+      let positionAdjustmentReason = '使用屏幕中心';
 
       // 鍙湁鍦ㄤ笉闇€瑕佸己鍒舵崲琛屾椂鎵嶈皟鏁翠綅缃?
       if (!forceLineBreak) {
         if (screenCenterX < leftBound) {
           adjustedX = leftBound;
-          positionAdjustmentReason = '鏂囨湰澶暱锛屽乏杈圭晫璋冩暣';
+          positionAdjustmentReason = '文本太长，左边界调整';
         } else if (screenCenterX > rightBound) {
           adjustedX = rightBound;
-          positionAdjustmentReason = '鏂囨湰澶暱锛屽彸杈圭晫璋冩暣';
+          positionAdjustmentReason = '文本太长，右边界调整';
         }
       }
 
-      // console.log('[ZimuShengcheng.optimizeLayout] 鍗曡瀛楀箷X鍧愭爣:', { ... });
+      // console.log('[ZimuShengcheng.optimizeLayout] 单行字幕X坐标:', { ... });
 
-      // 馃敡 璋冭瘯锛氳緭鍑烘瘡涓瓧骞曠殑鎹㈣鍒ゆ柇璇︽儏锛堝凡绠€鍖栵級
-      // console.log('[ZimuShengcheng.optimizeLayout] 馃挕 瀛楀箷鎹㈣鍒ゆ柇:', { ... });
+      // 🔧 调试：输出每个字幕的换行判断详情（已简化）
+      // console.log('[ZimuShengcheng.optimizeLayout] 💡 字幕换行判断:', { ... });
 
       // 濡傛灉瀛楀箷闀垮害瓒呰繃闄愬埗锛屾垨鏂囨湰瀹藉害瓒呰繃灞忓箷锛岄渶瑕佹崲琛?
       if (displayLength > constraints.maxCharsPerLine || forceLineBreak) {
@@ -2373,31 +2373,31 @@ export class ZimuShengcheng {
           ? this.rebalanceInlineKeywordLines(subtitle.text, smartLineBreak(subtitle.text, constraints.maxCharsPerLine))
           : smartLineBreak(subtitle.text, constraints.maxCharsPerLine);
 
-        // 馃敡 娣诲姞璇婃柇鏃ュ織锛氭樉绀簊martLineBreak鐨勮缁嗚緭鍑猴紙宸茬畝鍖栵級
-        // console.log('[ZimuShengcheng.optimizeLayout] 馃攳 smartLineBreak璇︾粏杈撳嚭:', { ... });
+        // 🔧 添加诊断日志：显示smartLineBreak的详细输出（已简化）
+        // console.log('[ZimuShengcheng.optimizeLayout] 🔍 smartLineBreak详细输出:', { ... });
 
         if (lines.length > 1) {
           // 澶氳瀛楀箷锛氬垱寤哄涓瓧骞曞璞★紝姣忚涓€涓?
           const lineHeight = constraints.lineHeight;
           const originalDuration = subtitle.end - subtitle.start;
 
-          // 馃敡 鍏抽敭淇锛氫负澶氳瀛楀箷璋冩暣baseY锛岀‘淇濅笉瓒呭嚭灞忓箷搴曢儴
-          // 鍘熷baseY鏄负鍗曡璁捐鐨勶紝澶氳闇€瑕佸悜涓婄Щ鍔ㄤ互鐣欏嚭瓒冲绌洪棿
+          // 🔧 关键修复：为多行字幕调整baseY，确保不超出屏幕底部
+          // 原始baseY是为单行设计的，多行需要向上移动以留出足够空间
           // 浣嗚繖鍙鍓?琛屾湁鏁堬紝绗?琛屽強浠ュ悗鏄崟鐙樉绀哄湪涓嬩竴甯э紝涓嶉渶瑕佽皟鏁?
           const linesToDisplay = Math.min(lines.length, 2);  // 褰撳墠甯ф渶澶氭樉绀?琛?
           const totalHeight = linesToDisplay * lineHeight;
-          const screenBottom = constraints.videoHeight - constraints.verticalMargin;  // 灞忓箷搴曢儴瀹夊叏浣嶇疆
+          const screenBottom = constraints.videoHeight - constraints.verticalMargin;  // 屏幕底部安全位置
           const multilineLift = linesToDisplay > 1 ? Math.round(lineHeight * 0.55) : 0;
           const adjustedBaseY = Math.max(
             constraints.verticalMargin + lineHeight,
             Math.min(subtitle.position.y - multilineLift, screenBottom - totalHeight + lineHeight)
           );
 
-          // console.log('[ZimuShengcheng.optimizeLayout] 馃搹 澶氳瀛楀箷Y鍧愭爣璋冩暣:', { ... });
+          // console.log('[ZimuShengcheng.optimizeLayout] 📏 多行字幕Y坐标调整:', { ... });
 
-          // 馃敡 銆愭牳蹇冩敼杩涖€戝琛屽瓧骞曟寜鏃堕棿姣斾緥鍒嗗抚鏄剧ず
+          // 🔧 【核心改进】多行字幕按时间比例分帧显示
           // 姣忓抚鏈€澶?琛岋紝鍦ㄥ師濮嬫椂闂存鍐呭钩鍧囧垎閰嶏紝涓嶆埅鏂换浣曞唴瀹?
-          // 渚嬪锛?琛屽唴瀹瑰湪2绉掑唴锛屾媶鍒嗕负锛氱1-2琛?0-1绉掞紝绗?-4琛?1-2绉?
+          // 渚嬪锛?行内容在2秒内，拆分为：第1-2琛?0-1绉掞紝绗?-4琛?1-2绉?
           const LINES_PER_FRAME = 2;
           const totalFrames = Math.ceil(lines.length / LINES_PER_FRAME);
           const frameWeights = Array.from({ length: totalFrames }, (_, frameIndex) => {
@@ -2415,7 +2415,7 @@ export class ZimuShengcheng {
             };
           });
 
-          // console.log('[ZimuShengcheng.optimizeLayout] 馃搻 澶氳瀛楀箷鍒嗗抚澶勭悊:', { ... });
+          // console.log('[ZimuShengcheng.optimizeLayout] 📐 多行字幕分帧处理:', { ... });
 
           for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -2423,25 +2423,25 @@ export class ZimuShengcheng {
             const positionInFrame = i % LINES_PER_FRAME; // 鍦ㄨ繖涓€甯т腑鐨勪綅缃?(0 鎴?1)
             const linesInThisFrame = Math.min(LINES_PER_FRAME, lines.length - frameIndex * LINES_PER_FRAME);
 
-            // 馃敡 銆愭牳蹇冦€戣绠楄繖涓€琛岀殑鏃堕棿娈?
+            // 🔧 銆愭牳蹇冦€戣绠楄繖涓€琛岀殑鏃堕棿娈?
             const lineStartTime = frameTimings[frameIndex].start;
             const lineEndTime = frameTimings[frameIndex].end;
 
-            // console.log(`[ZimuShengcheng.optimizeLayout] 馃敡 鍒涘缓绗?{i + 1}琛屽瓧骞?`, { ... });
+            // console.log(`[ZimuShengcheng.optimizeLayout] 🔧 鍒涘缓绗?{i + 1}琛屽瓧骞?`, { ... });
 
-            // 馃敡 璁＄畻Y鍧愭爣锛氭瘡甯у唴鐨勮浣跨敤鐩稿悓鐨勫瀭鐩撮棿璺濋€昏緫
-            // 濡傛灉杩欏抚鍙湁1琛岋紝鏀惧湪搴曢儴锛涘鏋滄湁2琛岋紝绗?琛屽湪涓婏紝绗?琛屽湪涓?
+            // 🔧 计算Y坐标：每帧内的行使用相同的垂直间距逻辑
+            // 如果这帧只有1行，放在底部；如果有2琛岋紝绗?琛屽湪涓婏紝绗?琛屽湪涓?
             let lineY: number;
             if (linesInThisFrame === 1) {
-              lineY = adjustedBaseY; // 鍗曡鏀惧湪搴曢儴
+              lineY = adjustedBaseY; // 单行放在底部
             } else {
-              // 2琛屾椂锛歱ositionInFrame=0 鍦ㄤ笂鏂癸紝positionInFrame=1 鍦ㄤ笅鏂?
+              // 2行时：positionInFrame=0 在上方，positionInFrame=1 鍦ㄤ笅鏂?
               lineY = adjustedBaseY - (linesInThisFrame - 1 - positionInFrame) * lineHeight;
             }
 
-            // console.log(`[ZimuShengcheng.optimizeLayout] 馃啎 绗?{i + 1}琛孻鍧愭爣璁＄畻:`, { ... });
+            // console.log(`[ZimuShengcheng.optimizeLayout] 🆕 绗?{i + 1}行Y坐标计算:`, { ... });
 
-            // 馃敡 浣跨敤灞忓箷涓績瀵归綈
+            // 🔧 使用屏幕中心对齐
             const screenCenterX = constraints.videoWidth / 2;
             const lineX = screenCenterX;
 
@@ -2451,7 +2451,7 @@ export class ZimuShengcheng {
               type: subtitle.type,
               text: line,
               start: lineStartTime,
-              // 馃敡 鎵€鏈夎浣跨敤鐩稿悓鐨勬寔缁椂闀匡紙濡傛灉鍐呭杈冮暱锛岃嚜鍔ㄥ欢闀匡級
+              // 🔧 所有行使用相同的持续时长（如果内容较长，自动延长）
               end: lineEndTime,
               position: {
                 x: lineX,
@@ -2470,16 +2470,16 @@ export class ZimuShengcheng {
               lineSubtitle.animationConfig = subtitle.animationConfig;
             }
 
-            // console.log(`[ZimuShengcheng.optimizeLayout] 鉁?绗?{i + 1}琛屽瓧骞曞璞″凡鍒涘缓锛屽嵆灏唒ush鍒皁ptimized鏁扮粍`, { ... });
+            // console.log(`[ZimuShengcheng.optimizeLayout] ✅绗?{i + 1}行字幕对象已创建，即将push到optimized数组`, { ... });
 
             optimized.push(lineSubtitle);
           }
 
-          // console.log(`[ZimuShengcheng.optimizeLayout] 鉁?澶氳瀛楀箷澶勭悊瀹屾垚锛宱ptimized鏁扮粍涓凡娣诲姞${lines.length}涓瓧骞昤, { ... });
+          // console.log(`[ZimuShengcheng.optimizeLayout] ✅澶氳瀛楀箷澶勭悊瀹屾垚锛宱ptimized数组中已添加${lines.length}个字幕`, { ... });
         } else {
-          // 馃敡 鍏抽敭淇锛氬綋 forceLineBreak 涓?true 鏃讹紝鍗充娇 smartLineBreak 鍙繑鍥?1 琛岋紝
+          // 🔧 关键修复：当 forceLineBreak 涓?true 时，即使 smartLineBreak 鍙繑鍥?1 行，
           // 涔熷簲璇ヤ娇鐢?screenCenterX 鑰屼笉鏄?adjustedX锛岀‘淇濇枃鏈眳涓榻?
-          // adjustedX 鍙兘琚缃负杈圭晫鍊硷紙leftBound 鎴?rightBound锛夛紝瀵艰嚧鏂囨湰鍋忓悜鍙宠竟
+          // adjustedX 可能被设置为边界值（leftBound 鎴?rightBound），导致文本偏向右边
           const finalX = forceLineBreak ? (constraints.videoWidth / 2) : adjustedX;
 
           // console.log('[ZimuShengcheng.optimizeLayout] 鍗曡瀛楀箷浣嶇疆鏈€缁堢‘瀹?', { ... });
@@ -2493,7 +2493,7 @@ export class ZimuShengcheng {
           });
         }
       } else {
-        // 瀛楀箷闀垮害鍦ㄩ檺鍒跺唴锛屼娇鐢ㄨ皟鏁村悗鐨刋鍧愭爣
+        // 字幕长度在限制内，使用调整后的X坐标
         optimized.push({
           ...subtitle,
           position: {
@@ -2508,10 +2508,10 @@ export class ZimuShengcheng {
     return optimized;
   }
 
-  // ==================== 姝ラ4-5: 鐢熸垚ASS鍜宒rawtext ====================
+  // ==================== 步骤4-5: 生成ASS和drawtext ====================
 
   /**
-   * 鐢熸垚ASS鏂囦欢锛堟櫘閫氬瓧骞曞眰鍜岀畝鍗曠壒鏁堝眰锛?
+   * 生成ASS鏂囦欢锛堟櫘閫氬瓧骞曞眰鍜岀畝鍗曠壒鏁堝眰锛?
    * @private
    */
   private async generateASSFiles(
@@ -2520,14 +2520,14 @@ export class ZimuShengcheng {
   ): Promise<string[]> {
     const files: string[] = [];
 
-    // 1. 鏅€氬瓧骞曞眰
+    // 1. 普通字幕层
     const normalSubtitles = subtitles.filter(s => s.layer === 'ass_normal');
     if (normalSubtitles.length > 0) {
       const normalFile = await this.generateNormalASSFile(normalSubtitles, config);
       files.push(normalFile);
     }
 
-    // 2. 鐗规晥瀛楀箷灞傦紙ASS锛?
+    // 2. 特效字幕层（ASS锛?
     const effectSubtitles = subtitles.filter(s => s.layer === 'ass_effect');
     if (effectSubtitles.length > 0) {
       const effectFile = await this.generateEffectASSFile(effectSubtitles, config);
@@ -2538,33 +2538,33 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鐢熸垚鏅€氬瓧骞旳SS鏂囦欢
+   * 生成普通字幕ASS文件
    * @private
    */
   private async generateNormalASSFile(
     subtitles: ArrangedSubtitle[],
     config: ZimuConfig
   ): string {
-    // 鍒涘缓鏍峰紡
+    // 创建样式
     const normalStyle = ASSGenerator.convertRenderStyleToASS(
       'Normal',
       subtitles[0].style,
       config.videoHeight
     );
 
-    // 鍒涘缓浜嬩欢
+    // 创建事件
     const events = subtitles.map(s =>
       ASSGenerator.subtitleToDialogue(s, 'Normal')
     );
 
-    // 鐢熸垚ASS鍐呭
+    // 生成ASS内容
     const assContent = ASSGenerator.generate(
       events,
       [normalStyle],
       { width: config.videoWidth, height: config.videoHeight, fontDir: config.fontDir }
     );
 
-    // 淇濆瓨鏂囦欢
+    // 保存文件
     const tempDir = await this.getTempDir();
     const filePath = `${tempDir}/layer1_normal_${Date.now()}.ass`;
     await ASSGenerator.saveToFile(assContent, filePath);
@@ -2573,21 +2573,21 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鐢熸垚鐗规晥瀛楀箷ASS鏂囦欢
+   * 生成特效字幕ASS文件
    * @private
    */
   private async generateEffectASSFile(
     subtitles: ArrangedSubtitle[],
     config: ZimuConfig
   ): Promise<string> {
-    // 鍒涘缓鏍峰紡锛堥噾鑹茬壒鏁堬級
+    // 创建样式（金色特效）
     const effectStyle = this.createGoldEffectStyle(config);
 
-    // 鍒涘缓浜嬩欢锛堝甫ASS鐗规晥鏍囩锛?
+    // 创建事件（带ASS鐗规晥鏍囩锛?
     const events: ASSDialogueEvent[] = subtitles.map(s => {
       const event = ASSGenerator.subtitleToDialogue(s, 'GoldEffect');
 
-      // 娣诲姞缂╂斁鏁堟灉鏍囩
+      // 添加缩放效果标签
       event.text = ASSGenerator.generateScaleEffect(
         s.text,
         s.position.x,
@@ -2598,14 +2598,14 @@ export class ZimuShengcheng {
       return event;
     });
 
-    // 鐢熸垚ASS鍐呭
+    // 生成ASS内容
     const assContent = ASSGenerator.generate(
       events,
       [effectStyle],
       { width: config.videoWidth, height: config.videoHeight, fontDir: config.fontDir }
     );
 
-    // 淇濆瓨鏂囦欢
+    // 保存文件
     const tempDir = await this.getTempDir();
     const filePath = `${tempDir}/layer2_effects_${Date.now()}.ass`;
     await ASSGenerator.saveToFile(assContent, filePath);
@@ -2614,7 +2614,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鐢熸垚drawtext鍛戒护锛堢函drawtext鏂规锛氭墍鏈夊瓧骞曢兘鐢╠rawtext娓叉煋锛?
+   * 生成drawtext命令（纯drawtext方案：所有字幕都用drawtext娓叉煋锛?
    * @private
    */
   private generateDrawtextCommands(
@@ -2623,12 +2623,12 @@ export class ZimuShengcheng {
   ): string[] {
     const commands: string[] = [];
 
-    console.log('[ZimuShengcheng.generateDrawtextCommands] 寮€濮嬬敓鎴愶紝瀛楀箷鏁伴噺:', subtitles.length);
+    console.log('[ZimuShengcheng.generateDrawtextCommands] 开始生成，字幕数量:', subtitles.length);
 
-    // 馃攳 鍏抽敭璇婃柇锛氭鏌ョ涓€鏉″瓧骞曠殑鏃堕棿
+    // 🔍 关键诊断：检查第一条字幕的时间
     if (subtitles.length > 0) {
       const first = subtitles[0];
-      console.log('[ZimuShengcheng] 鉁?绗竴鏉″瓧骞曠殑鏃堕棿淇℃伅:', {
+      console.log('[ZimuShengcheng] ✅绗竴鏉″瓧骞曠殑鏃堕棿淇℃伅:', {
         start: first.start,
         end: first.end,
         startSec: (first.start / 1000).toFixed(2),
@@ -2638,13 +2638,13 @@ export class ZimuShengcheng {
       });
     }
 
-    // 銆愮函drawtext鏂规銆戝鐞嗘墍鏈夊瓧骞曪紝涓嶅尯鍒唋ayer
+    // 【纯drawtext方案】处理所有字幕，不区分layer
     for (let i = 0; i < subtitles.length; i++) {
       const subtitle = subtitles[i];
       try {
-        // 馃攳 鍙褰曠1鏉″瓧骞曠殑璇︾粏淇℃伅
+        // 🔍 只记录第1条字幕的详细信息
         if (i === 0) {
-          console.log(`[ZimuShengcheng] 绗竴鏉″瓧骞曡鎯? 绫诲瀷=${subtitle.type}, 鏂囧瓧="${subtitle.text.substring(0, 30)}", 鏃堕棿=${subtitle.start.toFixed(2)}s-${subtitle.end.toFixed(2)}s`);
+          console.log(`[ZimuShengcheng] 绗竴鏉″瓧骞曡鎯? 类型=${subtitle.type}, 文字="${subtitle.text.substring(0, 30)}", 时间=${subtitle.start.toFixed(2)}s-${subtitle.end.toFixed(2)}s`);
         }
 
         if (subtitle.type === 'normal') {
@@ -2685,11 +2685,11 @@ export class ZimuShengcheng {
           if (i === 0 && primaryCommand) {
             const enableMatch = primaryCommand.match(/enable='([^']+)'/);
             if (enableMatch) {
-              console.log(`[ZimuShengcheng] 鉁?绗竴鏉″瓧骞昬nable: ${enableMatch[1]}`);
+              console.log(`[ZimuShengcheng] ✅绗竴鏉″瓧骞昬nable: ${enableMatch[1]}`);
             }
           }
         } else if (subtitle.type === 'effect_complex') {
-          // 鐗规晥瀛楀箷锛堝甫鍔ㄧ敾锛夛細浣跨敤 drawtext 娓叉煋锛堟敮鎸佸姩鐢绘晥鏋滐級
+          // 特效字幕（带动画）：使用 drawtext 渲染（支持动画效果）
           // 銆愪慨澶嶃€戣浆鎹㈡椂闂村崟浣嶄负绉?
           const normalizedSubtitle = {
             ...subtitle,
@@ -2721,11 +2721,11 @@ export class ZimuShengcheng {
             console.log(`[ZimuShengcheng] 特效字幕命令生成完成，子命令数: ${result.length}`);
           } else {
             commands.push(result);
-            console.log(`[ZimuShengcheng] 鉁?鐢熸垚鐗规晥瀛楀箷鍛戒护瀹屾垚`);
+            console.log(`[ZimuShengcheng] ✅鐢熸垚鐗规晥瀛楀箷鍛戒护瀹屾垚`);
           }
         } else if (subtitle.type === 'effect_simple') {
-          // 馃敡 淇锛氱畝鍗曠壒鏁堝瓧骞曚篃搴旇搴旂敤鐗规晥鍔ㄧ敾
-          // 涔嬪墠閿欒鍦扮洿鎺ョ敓鎴愭櫘閫氬瓧骞曪紝瀵艰嚧DANMAKU銆丄RC_TEXT绛夌壒鏁堜笉鏄剧ず
+          // 🔧 修复：简单特效字幕也应该应用特效动画
+          // 之前错误地直接生成普通字幕，导致DANMAKU、ARC_TEXT等特效不显示
           const normalizedSubtitle = {
             ...subtitle,
             start: this.normalizeTimeToSeconds(subtitle.start),
@@ -2790,15 +2790,15 @@ export class ZimuShengcheng {
 
     console.log('[ZimuShengcheng.generateDrawtextCommands] 鐢熸垚瀹屾垚锛屽懡浠ゆ暟閲?', commands.length);
 
-    // 馃敡 鍙栨秷寮哄埗淇锛氫娇鐢ㄥ疄闄呰绠楃殑鐗规晥瀛楀箷浣嶇疆
-    // 涓嶅啀寮哄埗鏇挎崲 x 鍙傛暟涓?100锛岃€屾槸淇濈暀 SmartLayoutManager 璁＄畻鐨勫€?
+    // 🔧 取消强制修复：使用实际计算的特效字幕位置
+    // 不再强制替换 x 鍙傛暟涓?100，而是保留 SmartLayoutManager 璁＄畻鐨勫€?
     const correctedCommands = commands.map((cmd, idx) => {
       const subtitle = subtitles[idx];
       if (!subtitle) return cmd;
 
-      // 馃敡 瀵圭壒鏁堝瓧骞曪細淇濈暀鍘熷鍛戒护锛堝凡鍦╣enerateNormalDrawtext涓娇鐢╬osition.x锛?
+      // 🔧 对特效字幕：保留原始命令（已在generateNormalDrawtext中使用position.x锛?
       if (subtitle.type === 'effect_complex' || subtitle.type === 'effect_simple') {
-        console.log(`[ZimuShengcheng.generateDrawtextCommands] 鉁?鐗规晥瀛楀箷浣跨敤SmartLayoutManager鐨勪綅缃绠?`, {
+        console.log(`[ZimuShengcheng.generateDrawtextCommands] ✅鐗规晥瀛楀箷浣跨敤SmartLayoutManager鐨勪綅缃绠?`, {
           text: subtitle.text.substring(0, 15),
           type: subtitle.type,
           position_x: subtitle.position.x,
@@ -2806,7 +2806,7 @@ export class ZimuShengcheng {
         });
       }
 
-      return cmd;  // 淇濈暀鍘熷鍛戒护
+      return cmd;  // 保留原始命令
     });
 
     return correctedCommands;
@@ -2861,7 +2861,7 @@ export class ZimuShengcheng {
     const flattenedText = lines.join('');
     const matches = this.resolveInlineKeywordMatches(flattenedText, subtitleStart, subtitleEnd);
 
-    console.log('[ZimuShengcheng.generateInlineKeywordOverlayDrawtexts] 鍖归厤褰撳墠瀛楀箷鐨勫叧閿瘝:', {
+    console.log('[ZimuShengcheng.generateInlineKeywordOverlayDrawtexts] 匹配当前字幕的关键词:', {
       subtitle: subtitle.text.substring(0, 30),
       subtitleStart,
       subtitleEnd,
@@ -3447,7 +3447,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鐢熸垚鏅€氬瓧骞曠殑drawtext鍛戒护
+   * 生成普通字幕的drawtext命令
    * @private
    */
   private generateNormalDrawtext(
@@ -3470,7 +3470,7 @@ export class ZimuShengcheng {
       ? subtitle.position.alignment
       : 'center';
 
-    // 鉁?娣诲姞璇婃柇鏃ュ織锛氳褰曞瓧浣撹В鏋愯繃绋?
+    // ✅娣诲姞璇婃柇鏃ュ織锛氳褰曞瓧浣撹В鏋愯繃绋?
     console.log('[ZimuShengcheng] 生成普通字幕 drawtext 字体信息:', {
       text: subtitle.text.substring(0, 20),
       requestedFontName: safeFontName,
@@ -3479,44 +3479,44 @@ export class ZimuShengcheng {
 
     const fontPath = this.resolveFontPath(safeFontName, fontDir);
 
-    // 杞崲棰滆壊鏍煎紡
+    // 转换颜色格式
     const fontColor = this.convertHexToDrawtext(safeFontColor);
     const outlineColor = this.convertHexToDrawtext(safeOutlineColor);
 
-    // 鑳屾櫙棰滆壊锛氫繚鐣欏師濮嬫牸寮忥紙#RRGGBB锛夛紝鐢ㄤ簬鑳屾櫙閫忔槑搴?
+    // 背景颜色：保留原始格式（#RRGGBB锛夛紝鐢ㄤ簬鑳屾櫙閫忔槑搴?
     const backgroundColor = safeBackgroundColor || undefined;
 
-    // 鑳屾櫙閫忔槑搴︼細0.85 涓嶉€忔槑搴?= 0.15 閫忔槑搴?
+    // 背景透明度：0.85 涓嶉€忔槑搴?= 0.15 閫忔槑搴?
     let bgOpacity = safeBackgroundOpacity;
 
-    // 銆愬叧閿慨澶嶃€戞彁鍓嶅畾涔?dynamicBoxw锛岄伩鍏嶅悗缁唬鐮佸紩鐢ㄦ椂鍑虹幇 ReferenceError
-    // 銆愪慨澶嶈儗鏅孩鍑恒€戞牴鎹槸鍚︽湁鑳屾櫙鏉ヨ皟鏁碽oxw
-    // 鏈夎儗鏅椂锛岄渶瑕佹洿灏忕殑boxw闃叉鍙宠竟婧㈠嚭
-    // 鏃犺儗鏅椂锛屽彲浠ヤ娇鐢ㄦ洿澶х殑boxw鏉ユ樉绀哄畬鏁村瓧骞?
+    // 銆愬叧閿慨澶嶃€戞彁鍓嶅畾涔?dynamicBoxw，避免后续代码引用时出现 ReferenceError
+    // 【修复背景溢出】根据是否有背景来调整boxw
+    // 有背景时，需要更小的boxw防止右边溢出
+    // 无背景时，可以使用更大的boxw鏉ユ樉绀哄畬鏁村瓧骞?
     const hasBackground = backgroundColor && bgOpacity > 0 &&
       backgroundColor.toUpperCase() !== 'TRANSPARENT' &&
       backgroundColor !== 'transparent';
 
-    const horizontalMargin = 60;  // 鍩虹宸﹀彸杈硅窛
-    // 銆愪慨澶嶃€戝綋鏈夎儗鏅椂澧炲姞extraSafety锛屾棤鑳屾櫙鏃朵娇鐢ㄦ洿灏忕殑鍊?
+    const horizontalMargin = 60;  // 基础左右边距
+    // 【修复】当有背景时增加extraSafety锛屾棤鑳屾櫙鏃朵娇鐢ㄦ洿灏忕殑鍊?
     const extraSafety = hasBackground ? 80 : 40;  // 鑳屾櫙鏃?0锛屾棤鑳屾櫙鏃?0
     const dynamicBoxw = this.config.videoWidth - 2 * (horizontalMargin + extraSafety);  // 鍔ㄦ€佽绠?
 
-    // 馃敡 淇锛氭鏌?position.x 鏄惁琚?SmartLayoutManager 鏄惧紡淇敼杩?
-    // 濡傛灉 position.x 鏄庢樉涓嶇瓑浜庡睆骞曚腑蹇冿紙鍋忓樊瓒呰繃50px锛夛紝璇存槑琚噸鏂板畾浣嶄簡
+    // 🔧 淇锛氭鏌?position.x 鏄惁琚?SmartLayoutManager 鏄惧紡淇敼杩?
+    // 如果 position.x 明显不等于屏幕中心（偏差超过50px），说明被重新定位了
     const videoCenterX = this.config.videoWidth / 2;  // 閫氬父鏄?960
     const positionDeviation = Math.abs(safePositionX - videoCenterX);
-    const hasExplicitPosition = positionDeviation > 50;  // 濡傛灉鍋忓樊瓒呰繃50px锛岃涓鸿鏄惧紡瀹氫綅
+    const hasExplicitPosition = positionDeviation > 50;  // 如果偏差超过50px，认为被显式定位
 
-    // 馃敡 寮哄埗淇锛氱壒鏁堝瓧骞曠洿鎺ユ斁鍦ㄥ乏杈癸紝鏅€氬瓧骞曟斁鍦ㄤ腑澶?
+    // 🔧 寮哄埗淇锛氱壒鏁堝瓧骞曠洿鎺ユ斁鍦ㄥ乏杈癸紝鏅€氬瓧骞曟斁鍦ㄤ腑澶?
     let xExpr: string;
 
-    // 妫€鏌ユ槸鍚︽槸鐗规晥瀛楀箷锛堢壒鏁堝瓧骞曠殑 type 涓嶆槸 'normal'锛?
+    // 检查是否是特效字幕（特效字幕的 type 不是 'normal'锛?
     const isEffectSubtitle = subtitle.type !== 'normal';
 
     if (isEffectSubtitle) {
-      // 馃敡 淇锛氱壒鏁堝瓧骞曠殑position.x鏄疭martLayoutManager璁＄畻鐨勬按骞充綅缃弬鑰冪偣
-      // 鐩存帴灏嗗叾鐢ㄤ簬drawtext鐨剎鍧愭爣锛團Fmpeg浼氫互姝や负鍩哄噯澶勭悊瀵归綈锛?
+      // 🔧 修复：特效字幕的position.x是SmartLayoutManager计算的水平位置参考点
+      // 直接将其用于drawtext的x坐标（FFmpeg浼氫互姝や负鍩哄噯澶勭悊瀵归綈锛?
       const effectX = safePositionX || this.config.videoWidth / 2;
       xExpr = `max(18,min(${effectX},w-text_w-18))`;
       console.log('[ZimuShengcheng.generateNormalDrawtext] 特效字幕使用 SmartLayoutManager 位置:', {
@@ -3527,29 +3527,29 @@ export class ZimuShengcheng {
         note: '特效字幕直接使用 SmartLayoutManager 计算的位置'
       });
     } else {
-      // 銆愬叧閿慨澶嶃€戞櫘閫氬瓧骞曚篃浣跨敤缁濆瀹氫綅锛岀‘淇?optimizeLayout 璁＄畻鐨?adjustedX 鐢熸晥
-      // subtitle.position.x 宸茬粡鍖呭惈浜嗚竟鐣岃皟鏁村悗鐨勪綅缃紙鏉ヨ嚜 optimizeLayout 鐨?adjustedX锛?
+      // 銆愬叧閿慨澶嶃€戞櫘閫氬瓧骞曚篃浣跨敤缁濆瀹氫綅锛岀‘淇?optimizeLayout 璁＄畻鐨?adjustedX 生效
+      // subtitle.position.x 已经包含了边界调整后的位置（来自 optimizeLayout 鐨?adjustedX锛?
       const absoluteX = safePositionX;
 
-      // 鏍规嵁瀵归綈鏂瑰紡璁＄畻鏈€缁堢殑x鍧愭爣
+      // 根据对齐方式计算最终的x坐标
       if (safeAlignment === 'center') {
         // 灞呬腑瀵归綈锛歺鍧愭爣鏄枃鏈腑蹇冪偣锛岄渶瑕佸噺鍘诲崐涓枃鏈搴?
         xExpr = `max(${horizontalMargin},min(${absoluteX}-(text_w/2),w-text_w-${horizontalMargin}))`;
       } else if (safeAlignment === 'right') {
-        // 鍙冲榻愶細x鍧愭爣鏄枃鏈彸杈圭紭
+        // 右对齐：x坐标是文本右边缘
         xExpr = `max(${horizontalMargin},min(${absoluteX}-text_w,w-text_w-${horizontalMargin}))`;
       } else {
-        // 宸﹀榻愶細x鍧愭爣灏辨槸鏂囨湰宸﹁竟缂?
+        // 左对齐：x鍧愭爣灏辨槸鏂囨湰宸﹁竟缂?
         xExpr = `max(${horizontalMargin},min(${absoluteX},w-text_w-${horizontalMargin}))`;
       }
 
-      console.log(`[ZimuShengcheng.generateNormalDrawtext] 鏅€氬瓧骞曚娇鐢ㄧ粷瀵瑰畾浣嶏紙纭繚杈圭晫妫€鏌ョ敓鏁堬級:`, {
+      console.log(`[ZimuShengcheng.generateNormalDrawtext] 普通字幕使用绝对定位（确保边界检查生效）:`, {
         text: subtitle.text.substring(0, 20),
         alignment: safeAlignment,
         position_x: safePositionX,
         adjustedX: absoluteX.toFixed(2),
         xExpr: xExpr,
-        note: '浣跨敤 optimizeLayout 璁＄畻鐨?adjustedX锛岀‘淇濅笉瓒呭嚭灞忓箷'
+        note: '使用 optimizeLayout 璁＄畻鐨?adjustedX，确保不超出屏幕'
       });
     }
 
@@ -3582,17 +3582,17 @@ export class ZimuShengcheng {
     startTime = Math.max(0, startTime);
     endTime = Math.max(0, endTime);
 
-    // 鐢熸垚enable琛ㄨ揪寮忥紙浣跨敤杞崲鍚庣殑绉掓暟锛?
+    // 生成enable琛ㄨ揪寮忥紙浣跨敤杞崲鍚庣殑绉掓暟锛?
     const enableExpr = `between(t,${startTime.toFixed(3)},${endTime.toFixed(3)})`;
 
-    // 馃攳 璇婃柇锛氳緭鍑哄墠3鏉″瓧骞曠殑enable琛ㄨ揪寮忥紙绠€鍗曟柟寮忥級
-    // 閫氳繃妫€鏌ュ紑濮嬫椂闂存槸鍚︽槸0鎴栨帴杩戝紑濮嬩綅缃潵鍒ゆ柇鏄惁鏄墠鍑犳潯瀛楀箷
+    // 🔍 诊断：输出前3条字幕的enable表达式（简单方式）
+    // 通过检查开始时间是否是0或接近开始位置来判断是否是前几条字幕
     if (startTime <= 1 || (startTime >= 10 && startTime <= 12) || (startTime >= 15 && startTime <= 16.5)) {
-      console.log(`[generateNormalDrawtext] 瀛楀箷enable琛ㄨ揪寮? "${subtitle.text.substring(0, 20)}..." -> enable='${enableExpr}' (start=${startTime.toFixed(2)}s)`);
+      console.log(`[generateNormalDrawtext] 字幕enable琛ㄨ揪寮? "${subtitle.text.substring(0, 20)}..." -> enable='${enableExpr}' (start=${startTime.toFixed(2)}s)`);
     }
 
-    // 杞箟鏂囨湰
-    // 馃敡 鍏坣ormalize锛堟妸鏍囩偣绗﹀彿鏇挎崲鎴愮┖鏍硷級锛屽啀escape锛堣浆涔夌壒娈婂瓧绗︼級
+    // 转义文本
+    // 🔧 先normalize（把标点符号替换成空格），再escape（转义特殊字符）
     const normalizedText = this.normalizeTextForDisplay(subtitle.text);
     const escapedText = normalizedText
       .replace(/\\/g, '\\\\')
@@ -3603,15 +3603,15 @@ export class ZimuShengcheng {
     // 銆愪慨澶嶃€戣儗鏅鑹插鐞嗭細纭繚涓嶅嚭鐜?"TRANSPARENT" 瀛楃涓?
     let validBackgroundColor: string | undefined = backgroundColor;
     if (backgroundColor && (backgroundColor.toUpperCase() === 'TRANSPARENT' || backgroundColor === 'transparent')) {
-      // 濡傛灉鑳屾櫙鏄€忔槑鐨勶紝浣跨敤榛戣壊瀹屽叏閫忔槑
+      // 如果背景是透明的，使用黑色完全透明
       validBackgroundColor = '#000000';
-      bgOpacity = 0;  // 瀹屽叏閫忔槑
+      bgOpacity = 0;  // 完全透明
     }
 
-    // 鏋勫缓drawtext閰嶇疆
-    // 馃敡 閲嶈锛氱壒鏁堝瓧骞曞拰鏅€氬瓧骞曚娇鐢ㄤ笉鍚岀殑閰嶇疆
-    // 鐗规晥瀛楀箷锛氫笉浣跨敤boxw闄愬埗锛岀洿鎺ヤ娇鐢ㄥ睆骞曞潗鏍?
-    // 鏅€氬瓧骞曪細浣跨敤boxw闄愬埗锛岃嚜鍔ㄦ崲琛?
+    // 构建drawtext配置
+    // 🔧 重要：特效字幕和普通字幕使用不同的配置
+    // 特效字幕：不使用boxw闄愬埗锛岀洿鎺ヤ娇鐢ㄥ睆骞曞潗鏍?
+    // 普通字幕：使用boxw闄愬埗锛岃嚜鍔ㄦ崲琛?
 
     const config: any = {
       fontfile: fontPath,
@@ -3624,25 +3624,25 @@ export class ZimuShengcheng {
       bordercolor: outlineColor,
       enable: enableExpr
       // 銆愪慨澶嶃€戝彧鍦ㄦ病鏈夎儗鏅椂璁剧疆琛岄棿璺?
-      // 濡傛灉鏈夎儗鏅紝琛岄棿璺濅細瀵艰嚧鑳屾櫙妗嗛珮搴﹀鍑轰竴闀挎潯
+      // 如果有背景，行间距会导致背景框高度多出一长条
     };
 
-    // 銆愪慨澶嶃€戝嵆浣挎湁鑳屾櫙涔熼渶瑕佽缃闂磋窛锛屼互閬垮厤澶氳瀛楀箷閲嶅彔
+    // 【修复】即使有背景也需要设置行间距，以避免多行字幕重叠
     // 鏈夎儗鏅椂浣跨敤杈冨皬鐨勮闂磋窛锛?5%锛夛紝鏃犺儗鏅椂浣跨敤杈冨ぇ鐨勮闂磋窛锛?0%锛?
-    // 娉ㄦ剰锛歨asBackground 宸插湪鍓嶉潰瀹氫箟杩囦簡锛岃繖閲岀洿鎺ヤ娇鐢?
+    // 注意：hasBackground 宸插湪鍓嶉潰瀹氫箟杩囦簡锛岃繖閲岀洿鎺ヤ娇鐢?
     if (hasBackground) {
-      config.line_spacing = Math.round(safeFontSize * 0.15);  // 鏈夎儗鏅椂浣跨敤杈冨皬鐨勮闂磋窛
+      config.line_spacing = Math.round(safeFontSize * 0.15);  // 有背景时使用较小的行间距
     } else {
       config.line_spacing = Math.round(safeFontSize * 0.3);   // 鏃犺儗鏅椂澧炲姞琛岄棿璺濓紝鏀瑰杽鍙鎬?
     }
 
-    // 馃敡 鍏抽敭锛氱壒鏁堝瓧骞曞拰鏅€氬瓧骞曢兘浣跨敤缁濆瀹氫綅锛岄兘涓嶄娇鐢╞oxw
-    // 鍘熷洜锛氬綋boxw琚缃椂锛屽畠鏀瑰彉浜嗗潗鏍囩郴鐨勮В閲?
-    // 涓嶈缃産oxw鏃讹紝x鍧愭爣鏄睆骞曠殑缁濆鍍忕礌鍊?
-    // 杩欐牱鎵嶈兘淇濊瘉 optimizeLayout 璁＄畻鐨?adjustedX 鐢熸晥
-    // 琛屾崲琛屽凡缁忓湪 optimizeLayout 涓畬鎴愪簡锛堝琛屽瓧骞曞鐞嗗湪绗?450-1538琛岋級
+    // 🔧 关键：特效字幕和普通字幕都使用绝对定位，都不使用boxw
+    // 原因：当boxw琚缃椂锛屽畠鏀瑰彉浜嗗潗鏍囩郴鐨勮В閲?
+    // 不设置boxw时，x鍧愭爣鏄睆骞曠殑缁濆鍍忕礌鍊?
+    // 这样才能保证 optimizeLayout 璁＄畻鐨?adjustedX 生效
+    // 行换行已经在 optimizeLayout 涓畬鎴愪簡锛堝琛屽瓧骞曞鐞嗗湪绗?450-1538行）
 
-    // 馃啎銆愰煩鏂?鏃ユ枃淇銆戞娴嬪瓧浣撴槸鍚︿负闇€瑕佺壒娈婂鐞嗙殑璇█
+    // 馃啎銆愰煩鏂?日文修复】检测字体是否为需要特殊处理的语言
     const fontNameLower = safeFontName.toLowerCase();
     const isAsianFont = fontNameLower.includes('malgun') ||
       fontNameLower.includes('noto') ||
@@ -3651,11 +3651,11 @@ export class ZimuShengcheng {
       fontNameLower.includes('simsun') ||
       fontNameLower.includes('yahei');
 
-    // 馃啎銆愬叧閿慨澶嶃€戝浜庝簹娲插瓧浣擄紙闊╂枃銆佹棩鏂囥€佷腑鏂囷級锛屽惎鐢╞oxw鍜宖ix_bounds
+    // 🆕【关键修复】对于亚洲字体（韩文、日文、中文），启用boxw和fix_bounds
     // 浠ラ槻姝㈡枃瀛楄秴鍑哄睆骞?
     if (isAsianFont && !isEffectSubtitle) {
       // 涓轰簹娲茶瑷€鍚敤瀹藉害闄愬埗锛岄槻姝㈣秴鍑哄睆骞?
-      // boxw闄愬埗锛氫娇鐢ㄨ棰戝搴︾殑80-90%锛屼负杈硅窛棰勭暀10-20%
+      // boxw限制：使用视频宽度的80-90%，为边距预留10-20%
       const asianBoxw = Math.floor(this.config.videoWidth * 0.85);
       config.boxw = undefined;
       config.fix_bounds = 1;
@@ -3669,12 +3669,12 @@ export class ZimuShengcheng {
         text: subtitle.text.substring(0, 20)
       });
     } else {
-      // 鑻辨枃绛夊叾浠栧瓧浣擄細涓嶄娇鐢╞oxw锛屾寜鍘熼€昏緫澶勭悊
+      // 英文等其他字体：不使用boxw，按原逻辑处理
       config.boxw = undefined;
       config.fix_bounds = 1;
     }
 
-    // 馃敡 璇婃柇锛氳褰昩oxw閰嶇疆
+    // 🔧 诊断：记录boxw配置
     console.log('[ZimuShengcheng.generateNormalDrawtext] 普通字幕宽度限制:', {
       text: subtitle.text.substring(0, 30),
       type: subtitle.type,
@@ -3687,7 +3687,7 @@ export class ZimuShengcheng {
       isNormalSubtitle: !isEffectSubtitle
     });
 
-    // 馃敡 璇婃柇锛氳褰曟渶缁堢敓鎴愮殑 x 琛ㄨ揪寮?
+    // 🔧 诊断：记录最终生成的 x 琛ㄨ揪寮?
     console.log('[ZimuShengcheng.generateNormalDrawtext] 最终 drawtext 参数:', {
       text: subtitle.text.substring(0, 20),
       position_x: safePositionX.toFixed(0),
@@ -3704,15 +3704,15 @@ export class ZimuShengcheng {
       config.shadowcolor = this.convertHexToDrawtext(safeShadowColor);
       config.shadowx = shadowOffset;
       config.shadowy = shadowOffset;
-      console.log(`[ZimuShengcheng] 娣诲姞闃村奖鏁堟灉: color=${config.shadowcolor}, offset=${shadowOffset}, outlineWidth=${safeOutlineWidth}`);
+      console.log(`[ZimuShengcheng] 添加阴影效果: color=${config.shadowcolor}, offset=${shadowOffset}, outlineWidth=${safeOutlineWidth}`);
     } else {
       console.log(`[ZimuShengcheng] 鏈坊鍔犻槾褰? shadowOffset=${shadowOffset}, shadowColor=${safeShadowColor}`);
     }
 
-    // 鐢熸垚drawtext鍛戒护锛堟敮鎸佽儗鏅€忔槑搴︼級
+    // 生成drawtext命令（支持背景透明度）
     return DrawtextGenerator.generateNormalSubtitle(
       config,
-      validBackgroundColor,  // 浣跨敤淇鍚庣殑鑳屾櫙棰滆壊
+      validBackgroundColor,  // 使用修复后的背景颜色
       bgOpacity
     );
   }
@@ -3748,20 +3748,20 @@ export class ZimuShengcheng {
     return this.generateNormalDrawtext(fallbackSubtitle, fontDir);
   }
 
-  // 瀛椾綋璺緞缂撳瓨锛堥伩鍏嶉噸澶嶆煡鎵撅級
+  // 字体路径缓存（避免重复查找）
   private fontPathCache: Map<string, string> = new Map();
 
   /**
-   * 棰勫厛瑙ｆ瀽鎵€鏈夊瓧浣撹矾寰勶紙寮傛锛屼娇鐢ㄥ瓧浣撶鐞嗗櫒API锛?
-   * 鍦ㄧ敓鎴恉rawtext鍛戒护涔嬪墠璋冪敤锛屽皢鎵€鏈夊瓧浣撹矾寰勭紦瀛樿捣鏉?
+   * 预先解析所有字体路径（异步，使用字体管理器API锛?
+   * 在生成drawtext鍛戒护涔嬪墠璋冪敤锛屽皢鎵€鏈夊瓧浣撹矾寰勭紦瀛樿捣鏉?
    * @private
    */
   private async preResolveFontPaths(subtitles: ArrangedSubtitle[]): Promise<void> {
-    // 鉁?娣诲姞鍏ㄥ眬瓒呮椂淇濇姢锛氭暣涓瓧浣撹矾寰勯瑙ｆ瀽杩囩▼鏈€澶?绉?
+    // ✅娣诲姞鍏ㄥ眬瓒呮椂淇濇姢锛氭暣涓瓧浣撹矾寰勯瑙ｆ瀽杩囩▼鏈€澶?绉?
     return Promise.race([
       this._preResolveFontPathsInternal(subtitles),
       new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error('瀛椾綋璺緞棰勮В鏋愯秴鏃讹紙5绉掞級锛屽皢浣跨敤鍚屾鏌ユ壘鏂规')), 5000)
+        setTimeout(() => reject(new Error('字体路径预解析超时（5秒），将使用同步查找方案')), 5000)
       )
     ]).catch((error) => {
       console.warn(`[ZimuShengcheng] 瀛椾綋璺緞棰勮В鏋愬け璐ワ紝灏嗕娇鐢ㄥ悓姝ユ煡鎵炬柟妗?`, error?.message || error);
@@ -3780,22 +3780,22 @@ export class ZimuShengcheng {
 
     console.log(`[ZimuShengcheng] 寮€濮嬮瑙ｆ瀽瀛椾綋璺緞锛屽瓧浣撴暟閲? ${fontNames.size}`);
 
-    // 骞惰瑙ｆ瀽鎵€鏈夊瓧浣撹矾寰勶紙浣跨敤allSettled锛岀‘淇濆嵆浣块儴鍒嗗け璐ヤ篃涓嶅奖鍝嶅叾浠栵級
+    // 并行解析所有字体路径（使用allSettled，确保即使部分失败也不影响其他）
     const fontPathPromises = Array.from(fontNames).map(async (fontName) => {
       // 濡傛灉宸茬粡缂撳瓨锛岃烦杩?
       if (this.fontPathCache.has(fontName)) {
         return;
       }
 
-      // 鉁?浼樺寲绛栫暐锛氫紭鍏堜娇鐢ㄥ瓧浣撶鐞嗗櫒API锛屽鏋滃け璐ュ垯鍥為€€鍒板悓姝ユ煡鎵?
-      // 淇濈暀瓒呮椂鏈哄埗锛岄伩鍏峆ython璋冪敤澶辫触瀵艰嚧闃诲
+      // ✅浼樺寲绛栫暐锛氫紭鍏堜娇鐢ㄥ瓧浣撶鐞嗗櫒API锛屽鏋滃け璐ュ垯鍥為€€鍒板悓姝ユ煡鎵?
+      // 保留超时机制，避免Python调用失败导致阻塞
       try {
-        // 灏濊瘯浣跨敤瀛椾綋绠＄悊鍣ˋPI鏌ユ壘瀛椾綋璺緞锛堜紭鍏堟柟妗堬級
+        // 尝试使用字体管理器API查找字体路径（优先方案）
         if (typeof window !== 'undefined' && window.$mapi?.fontManager?.findFontPath) {
           try {
-            // 鉁?娣诲姞瓒呮椂鏈哄埗锛?绉掕秴鏃讹紝蹇€熷け璐ワ紝閬垮厤闃诲
+            // ✅娣诲姞瓒呮椂鏈哄埗锛?秒超时，快速失败，避免阻塞
             const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('瀛椾綋绠＄悊鍣ˋPI璋冪敤瓒呮椂')), 3000)
+              setTimeout(() => reject(new Error('字体管理器API调用超时')), 3000)
             );
 
             const result = await Promise.race([
@@ -3804,7 +3804,7 @@ export class ZimuShengcheng {
             ]) as any;
 
             if (result && result.success && result.data) {
-              // 鉁?妫€鏌ュ瓧浣撹矾寰勬槸鍚﹀寘鍚腑鏂囧瓧绗︼紝濡傛灉鏄垯澶嶅埗鍒颁复鏃剁洰褰曞苟浣跨敤鑻辨枃鏂囦欢鍚?
+              // ✅妫€鏌ュ瓧浣撹矾寰勬槸鍚﹀寘鍚腑鏂囧瓧绗︼紝濡傛灉鏄垯澶嶅埗鍒颁复鏃剁洰褰曞苟浣跨敤鑻辨枃鏂囦欢鍚?
               const originalFontPath = result.data;
               const safeFontPath = await this.copyFontToSafePath(originalFontPath, fontName);
 
@@ -3813,46 +3813,46 @@ export class ZimuShengcheng {
               return;
             }
           } catch (apiError: any) {
-            // 瓒呮椂鎴朅PI璋冪敤澶辫触锛屽揩閫熷洖閫€鍒板悓姝ユ煡鎵撅紝涓嶉樆濉炴祦绋?
-            console.warn(`[ZimuShengcheng] 瀛椾綋绠＄悊鍣ˋPI璋冪敤澶辫触锛堝揩閫熷洖閫€鍒板悓姝ユ煡鎵撅級: ${fontName}`, apiError?.message || apiError);
-            // 涓嶆姏鍑洪敊璇紝缁х画鎵ц鍚屾鏌ユ壘
+            // 超时或API璋冪敤澶辫触锛屽揩閫熷洖閫€鍒板悓姝ユ煡鎵撅紝涓嶉樆濉炴祦绋?
+            console.warn(`[ZimuShengcheng] 字体管理器API调用失败（快速回退到同步查找）: ${fontName}`, apiError?.message || apiError);
+            // 不抛出错误，继续执行同步查找
           }
         }
       } catch (error: any) {
-        // 浠讳綍寮傚父閮藉揩閫熸崟鑾凤紝缁х画浣跨敤鍚屾鏌ユ壘
-        console.warn(`[ZimuShengcheng] 瀛椾綋绠＄悊鍣ㄦ煡鎵惧紓甯革紙灏嗕娇鐢ㄥ悓姝ユ煡鎵撅級: ${fontName}`, error?.message || error);
+        // 任何异常都快速捕获，继续使用同步查找
+        console.warn(`[ZimuShengcheng] 字体管理器查找异常（将使用同步查找）: ${fontName}`, error?.message || error);
       }
 
-      // 鍥為€€鏂规锛氫娇鐢ㄥ悓姝ユ煡鎵鹃€昏緫
+      // 回退方案：使用同步查找逻辑
       try {
         const fontPath = this.resolveFontPathSync(fontName);
-        // 鉁?妫€鏌ュ瓧浣撹矾寰勬槸鍚﹀寘鍚腑鏂囧瓧绗︼紝濡傛灉鏄垯澶嶅埗鍒颁复鏃剁洰褰曞苟浣跨敤鑻辨枃鏂囦欢鍚?
+        // ✅妫€鏌ュ瓧浣撹矾寰勬槸鍚﹀寘鍚腑鏂囧瓧绗︼紝濡傛灉鏄垯澶嶅埗鍒颁复鏃剁洰褰曞苟浣跨敤鑻辨枃鏂囦欢鍚?
         const safeFontPath = await this.copyFontToSafePath(fontPath, fontName);
         this.fontPathCache.set(fontName, safeFontPath);
-        console.log(`[ZimuShengcheng] 浣跨敤鍚屾鍥為€€鏂规鎵惧埌瀛椾綋: ${fontName} -> ${safeFontPath}`);
+        console.log(`[ZimuShengcheng] 使用同步回退方案找到字体: ${fontName} -> ${safeFontPath}`);
       } catch (syncError) {
-        console.error(`[ZimuShengcheng] 鍚屾鏌ユ壘瀛椾綋澶辫触: ${fontName}`, syncError);
+        console.error(`[ZimuShengcheng] 同步查找字体失败: ${fontName}`, syncError);
         // 鏈€鍚庣殑鍥為€€锛氫娇鐢ㄩ粯璁ゅ瓧浣?
         const systemRoot = process.env.SystemRoot || 'C:/Windows';
         const defaultFont = `${systemRoot}/Fonts/msyhbd.ttc`;
         this.fontPathCache.set(fontName, defaultFont);
-        console.warn(`[ZimuShengcheng] 浣跨敤榛樿瀛椾綋: ${fontName} -> ${defaultFont}`);
+        console.warn(`[ZimuShengcheng] 使用默认字体: ${fontName} -> ${defaultFont}`);
       }
     });
 
-    // 浣跨敤allSettled纭繚鎵€鏈塒romise閮藉畬鎴愶紙鏃犺鎴愬姛鎴栧け璐ワ級
+    // 使用allSettled确保所有Promise都完成（无论成功或失败）
     const results = await Promise.allSettled(fontPathPromises);
 
-    // 缁熻鎴愬姛鍜屽け璐ョ殑鏁伴噺
+    // 统计成功和失败的数量
     const successful = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    console.log(`[ZimuShengcheng] 瀛椾綋璺緞棰勮В鏋愬畬鎴愶紝鎴愬姛: ${successful}, 澶辫触: ${failed}, 缂撳瓨鏁伴噺: ${this.fontPathCache.size}`);
+    console.log(`[ZimuShengcheng] 字体路径预解析完成，成功: ${successful}, 失败: ${failed}, 缓存数量: ${this.fontPathCache.size}`);
   }
 
   /**
-   * 灏嗗瓧浣撴枃浠跺鍒跺埌涓存椂鐩綍锛屽鏋滆矾寰勫寘鍚潪ASCII瀛楃锛堝涓枃锛夛紝鍒欎娇鐢ㄨ嫳鏂囨枃浠跺悕
-   * 閬垮厤 FFmpeg 鍦?Windows 涓婃棤娉曞鐞嗕腑鏂囧瓧浣撹矾寰勭殑闂
+   * 将字体文件复制到临时目录，如果路径包含非ASCII字符（如中文），则使用英文文件名
+   * 避免 FFmpeg 鍦?Windows 上无法处理中文字体路径的问题
    * @private
    */
   /** 校验字体文件魔数（TTF/OTF/TTC），拦截 Git LFS 指针等损坏文件进入渲染管线 */
@@ -3892,7 +3892,7 @@ export class ZimuShengcheng {
   }
 
   private async copyFontToSafePath(originalFontPath: string, fontName: string): Promise<string> {
-    // 妫€鏌ヨ矾寰勬槸鍚﹀寘鍚潪ASCII瀛楃
+    // 检查路径是否包含非ASCII字符
     const hasNonAscii = /[^\x00-\x7F]/.test(originalFontPath);
 
     // ✅ 源文件有效性校验：拦截 Git LFS 指针、损坏字体（魔数非 TTF/OTF/TTC）
@@ -3902,14 +3902,14 @@ export class ZimuShengcheng {
     }
 
     if (!hasNonAscii) {
-      // 璺緞鍙寘鍚獳SCII瀛楃锛岀洿鎺ヨ繑鍥?
+      // 路径只包含ASCII瀛楃锛岀洿鎺ヨ繑鍥?
       return originalFontPath;
     }
 
-    console.log(`[ZimuShengcheng] 妫€娴嬪埌闈?ASCII 瀛楃锛屽鍒跺埌瀹夊叏璺緞: ${originalFontPath}`);
+    console.log(`[ZimuShengcheng] 妫€娴嬪埌闈?ASCII 字符，复制到安全路径: ${originalFontPath}`);
 
     try {
-      // 鑾峰彇涓存椂鐩綍
+      // 获取临时目录
       const tempDir = await this.getTempDir();
 
       // 鐢熸垚瀹夊叏鐨勮嫳鏂囨枃浠跺悕锛氫娇鐢ㄥ瓧浣撳悕绉扮殑鍝堝笇鍊?+ 鎵╁睍鍚?
@@ -3920,17 +3920,17 @@ export class ZimuShengcheng {
       const safeFileName = `font_${hash}${ext}`;
       const safeFontPath = path.join(tempDir, safeFileName).replace(/\\/g, '/');
 
-      // 妫€鏌ュ畨鍏ㄨ矾寰勬槸鍚﹀凡瀛樺湪
+      // 检查安全路径是否已存在
       if (typeof window !== 'undefined' && window.$mapi?.file?.exists) {
         const exists = await window.$mapi.file.exists(safeFontPath);
         if (exists && this.isValidFontFile(safeFontPath)) {
-          console.log(`[ZimuShengcheng] 鉁?瀹夊叏瀛椾綋璺緞宸插瓨鍦紝鐩存帴浣跨敤: ${safeFontPath}`);
+          console.log(`[ZimuShengcheng] ✅瀹夊叏瀛椾綋璺緞宸插瓨鍦紝鐩存帴浣跨敤: ${safeFontPath}`);
           return safeFontPath;
         }
       } else {
         const fs = await import('fs');
         if (fs.existsSync(safeFontPath) && this.isValidFontFile(safeFontPath)) {
-          console.log(`[ZimuShengcheng] 鉁?瀹夊叏瀛椾綋璺緞宸插瓨鍦紝鐩存帴浣跨敤: ${safeFontPath}`);
+          console.log(`[ZimuShengcheng] ✅瀹夊叏瀛椾綋璺緞宸插瓨鍦紝鐩存帴浣跨敤: ${safeFontPath}`);
           return safeFontPath;
         }
       }
@@ -3945,7 +3945,7 @@ export class ZimuShengcheng {
         await copyFile(originalFontPath, safeFontPath);
       }
 
-      // 楠岃瘉澶嶅埗鏄惁鎴愬姛
+      // 验证复制是否成功
       let fileExists = false;
       let fileSize = 0;
 
@@ -3965,27 +3965,27 @@ export class ZimuShengcheng {
       }
 
       if (!fileExists) {
-        throw new Error(`瀛椾綋鏂囦欢澶嶅埗澶辫触: ${safeFontPath}`);
+        throw new Error(`字体文件复制失败: ${safeFontPath}`);
       }
 
       if (fileSize === 0 || !this.isValidFontFile(safeFontPath)) {
-        throw new Error(`瀛椾綋鏂囦欢澶嶅埗鍚庡ぇ灏忎负 0: ${safeFontPath}`);
+        throw new Error(`字体文件复制后大小为 0: ${safeFontPath}`);
       }
 
-      console.log(`[ZimuShengcheng] 鉁?瀛椾綋鏂囦欢宸插鍒跺埌瀹夊叏璺緞: ${originalFontPath} -> ${safeFontPath} (${fileSize} bytes)`);
+      console.log(`[ZimuShengcheng] ✅瀛椾綋鏂囦欢宸插鍒跺埌瀹夊叏璺緞: ${originalFontPath} -> ${safeFontPath} (${fileSize} bytes)`);
       return safeFontPath;
 
     } catch (error: any) {
-      // 澶嶅埗澶辫触锛屾姏鍑洪敊璇€屼笉鏄潤榛樺洖閫€
-      const errorMsg = `鏃犳硶澶勭悊鍖呭惈涓枃鐨勫瓧浣撹矾寰? ${originalFontPath}. 閿欒: ${error?.message || error}`;
-      console.error(`[ZimuShengcheng] 鉂?${errorMsg}`);
+      // 复制失败，抛出错误而不是静默回退
+      const errorMsg = `鏃犳硶澶勭悊鍖呭惈涓枃鐨勫瓧浣撹矾寰? ${originalFontPath}. 错误: ${error?.message || error}`;
+      console.error(`[ZimuShengcheng] ❌${errorMsg}`);
       throw new Error(errorMsg);
     }
   }
 
   /**
    * 鍚屾瑙ｆ瀽瀛椾綋鏂囦欢璺緞锛堝洖閫€鏂规锛?
-   * 褰撳瓧浣撶鐞嗗櫒API涓嶅彲鐢ㄦ垨澶辫触鏃朵娇鐢?
+   * 当字体管理器API涓嶅彲鐢ㄦ垨澶辫触鏃朵娇鐢?
    * @private
    */
   private resolveFontPathSync(fontName: string): string {
@@ -3995,18 +3995,18 @@ export class ZimuShengcheng {
     const fontsDir = `${systemRoot}/Fonts`;
 
     if (!normalizedFontName) {
-      return `${fontsDir}/msyhbd.ttc`; // 榛樿瀛椾綋
+      return `${fontsDir}/msyhbd.ttc`; // 默认字体
     }
 
-    // 鍥為€€鏂规锛氬皾璇曞父瑙佺殑绯荤粺瀛椾綋璺緞锛圵indows锛?
+    // 回退方案：尝试常见的系统字体路径（Windows锛?
     const systemFonts: Record<string, string> = {
       'microsoft yahei': `${fontsDir}/msyh.ttc`,
-      '寰蒋闆呴粦': `${fontsDir}/msyh.ttc`,
+      '微软雅黑': `${fontsDir}/msyh.ttc`,
       'msyh': `${fontsDir}/msyh.ttc`,
       'simhei': `${fontsDir}/simhei.ttf`,
-      '榛戜綋': `${fontsDir}/simhei.ttf`,
+      '黑体': `${fontsDir}/simhei.ttf`,
       'simsun': `${fontsDir}/simsun.ttc`,
-      '瀹嬩綋': `${fontsDir}/simsun.ttc`,
+      '宋体': `${fontsDir}/simsun.ttc`,
       'msyhbd': `${fontsDir}/msyhbd.ttc`
     };
 
@@ -4019,7 +4019,7 @@ export class ZimuShengcheng {
         console.warn(`[ZimuShengcheng] 系统字体映射目标无效，使用兜底字体: ${fontPath}`);
         return this.getFallbackSystemFont();
       }
-      console.log(`[ZimuShengcheng] 浣跨敤绯荤粺瀛椾綋鏄犲皠: ${normalizedFontName} -> ${fontPath}`);
+      console.log(`[ZimuShengcheng] 使用系统字体映射: ${normalizedFontName} -> ${fontPath}`);
       return fontPath;
     }
 
@@ -4031,14 +4031,14 @@ export class ZimuShengcheng {
 
   /**
    * 瑙ｆ瀽瀛椾綋鏂囦欢璺緞锛堜粠缂撳瓨璇诲彇锛?
-   * 蹇呴』鍦╬reResolveFontPaths涔嬪悗璋冪敤
+   * 必须在preResolveFontPaths之后调用
    * @private
    */
   private resolveFontPath(fontName: string, fontDir: string): string {
     const normalizedFontName = this.normalizeFontNameValue(fontName);
     if (!normalizedFontName) {
       const systemRoot = process.env.SystemRoot || 'C:/Windows';
-      return `${systemRoot}/Fonts/msyhbd.ttc`; // 榛樿瀛椾綋
+      return `${systemRoot}/Fonts/msyhbd.ttc`; // 默认字体
     }
 
     // 浠庣紦瀛樿鍙?
@@ -4046,8 +4046,8 @@ export class ZimuShengcheng {
       return this.fontPathCache.get(normalizedFontName)!;
     }
 
-    // 濡傛灉娌℃湁缂撳瓨锛屼娇鐢ㄥ悓姝ュ洖閫€鏂规
-    console.warn(`[ZimuShengcheng] 瀛椾綋璺緞鏈紦瀛橈紝浣跨敤鍥為€€鏂规: ${normalizedFontName}`);
+    // 如果没有缓存，使用同步回退方案
+    console.warn(`[ZimuShengcheng] 字体路径未缓存，使用回退方案: ${normalizedFontName}`);
     return this.resolveFontPathSync(normalizedFontName);
   }
 
@@ -4086,13 +4086,13 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 灏嗗崄鍏繘鍒堕鑹茶浆鎹负drawtext鏍煎紡锛?xRRGGBB锛?
+   * 将十六进制颜色转换为drawtext鏍煎紡锛?xRRGGBB锛?
    * @private
    */
   private convertHexToDrawtext(hexColor: unknown): string {
     if (typeof hexColor !== 'string' || !hexColor.trim()) return '0xFFFFFF';
 
-    // 绉婚櫎 # 鍓嶇紑
+    // 移除 # 前缀
     const hex = hexColor.trim().replace('#', '').toUpperCase();
 
     // 纭繚鏄?浣嶅崄鍏繘鍒?
@@ -4103,7 +4103,7 @@ export class ZimuShengcheng {
       return `0x${hex}`;
     }
 
-    return '0xFFFFFF'; // 榛樿鐧借壊
+    return '0xFFFFFF'; // 默认白色
   }
 
   /**
@@ -4113,8 +4113,8 @@ export class ZimuShengcheng {
    */
   private normalizeTimeToSeconds(timeValue: number): number {
     // 绠€鍖栭€昏緫锛氬鏋滄椂闂村€煎ぇ浜?00锛岃涓烘槸姣锛岄渶瑕侀櫎浠?000
-    // 鍥犱负姝ｅ父瑙嗛瀛楀箷鐨勬椂闂存埑锛堜互绉掍负鍗曚綅锛夊緢灏戜細灏忎簬100绉?
-    // 浣嗗鏋滄槸姣锛屽嵆浣挎槸1绉掍篃浼氭槸1000
+    // 因为正常视频字幕的时间戳（以秒为单位）很少会小于100绉?
+    // 但如果是毫秒，即使是1秒也会是1000
     if (timeValue > 100) {
       return timeValue / 1000;
     }
@@ -4122,24 +4122,24 @@ export class ZimuShengcheng {
     return timeValue;
   }
 
-  // ==================== 姝ラ6-7: FFmpeg鎵ц ====================
+  // ==================== 步骤6-7: FFmpeg执行 ====================
 
   /**
-   * 馃啎 鏀堕泦璐寸焊绱犳潗
+   * 🆕 收集贴纸素材
    * @private
    */
   private collectStickerAssets(subtitles: ArrangedSubtitle[]): { path: string, instances: any[] }[] {
     const assetsMap = new Map<string, any[]>();
 
     for (const sub of subtitles) {
-      // 馃敡 淇锛氳创绾镐俊鎭瓨鍌ㄥ湪 animationConfig 涓?
-      // 妫€鏌?animationConfig.stickerId锛堟柊浣嶇疆锛夋垨 sub.stickerId锛堝吋瀹规棫浠ｇ爜锛?
+      // 🔧 修复：贴纸信息存储在 animationConfig 涓?
+      // 妫€鏌?animationConfig.stickerId（新位置）或 sub.stickerId锛堝吋瀹规棫浠ｇ爜锛?
       const stickerId = (sub as any).animationConfig?.stickerId || (sub as any).stickerId;
       const stickerConfig = (sub as any).animationConfig?.stickerConfig || (sub as any).stickerConfig;
 
-      // 馃攳 璋冭瘯锛氳褰曟墍鏈夊瓧骞曠殑璐寸焊淇℃伅鎻愬彇
+      // 🔍 调试：记录所有字幕的贴纸信息提取
       if (stickerId || (sub as any).animationConfig) {
-        console.log('[ZimuShengcheng.collectStickerAssets] 瀛楀箷璐寸焊淇℃伅:', {
+        console.log('[ZimuShengcheng.collectStickerAssets] 字幕贴纸信息:', {
           text: sub.text.substring(0, 20),
           stickerId,
           hasStickerConfig: !!stickerConfig,
@@ -4149,43 +4149,43 @@ export class ZimuShengcheng {
       }
 
       if (stickerId) {
-        // 馃敡 淇锛氭櫤鑳芥瀯寤鸿创绾歌矾寰?
-        // 1. 濡傛灉 stickerId 宸茬粡鏄粷瀵硅矾寰勶紙鏋佸皯鎯呭喌锛燂級锛岀洿鎺ヤ娇鐢?
-        // 2. 濡傛灉 stickerId 鍖呭惈鎵╁睍鍚嶏紝鐩存帴浣跨敤
-        // 3. 鍚﹀垯娣诲姞 .png
+        // 🔧 淇锛氭櫤鑳芥瀯寤鸿创绾歌矾寰?
+        // 1. 如果 stickerId 宸茬粡鏄粷瀵硅矾寰勶紙鏋佸皯鎯呭喌锛燂級锛岀洿鎺ヤ娇鐢?
+        // 2. 如果 stickerId 包含扩展名，直接使用
+        // 3. 否则添加 .png
 
-        // 鍩虹鐩綍 - 浣跨敤浼犲叆鐨?resourcesPath 鍙傛暟
+        // 基础目录 - 浣跨敤浼犲叆鐨?resourcesPath 参数
         const pathModule = window.require('path');
         const stickerBaseDir = pathModule.join(resourcesPath, 'stickers');
-        console.log(`[ZimuShengcheng] 璐寸焊鐩綍: ${stickerBaseDir}`);
+        console.log(`[ZimuShengcheng] 贴纸目录: ${stickerBaseDir}`);
 
         let stickerPath = '';
         if (stickerId === 'explosion') {
-          // 鍏煎鏃х殑纭紪鐮両D
+          // 兼容旧的硬编码ID
           stickerPath = `${stickerBaseDir}/explosion.png`;
         } else if (stickerId.toLowerCase().endsWith('.png') || stickerId.toLowerCase().endsWith('.jpg') || stickerId.toLowerCase().endsWith('.webp')) {
-          // 宸茬粡鏄枃浠跺悕
+          // 已经是文件名
           stickerPath = `${stickerBaseDir}/${stickerId}`;
         } else {
-          // 绾疘D锛岄粯璁ゆ坊鍔爌ng
+          // 纯ID，默认添加png
           stickerPath = `${stickerBaseDir}/${stickerId}.png`;
         }
 
-        // 馃攳 璇婃柇鏃ュ織锛氳褰曡创绾歌矾寰勮В鏋?
-        console.log(`[ZimuShengcheng] 瑙ｆ瀽璐寸焊璺緞: ID="${stickerId}" -> Path="${stickerPath}"`);
+        // 🔍 璇婃柇鏃ュ織锛氳褰曡创绾歌矾寰勮В鏋?
+        console.log(`[ZimuShengcheng] 解析贴纸路径: ID="${stickerId}" -> Path="${stickerPath}"`);
 
-        // 馃啎 瀹夊叏妫€鏌ワ細纭繚鏂囦欢瀛樺湪
+        // 🆕 安全检查：确保文件存在
         let fileExists = true;
         try {
           if (window.require) {
             const fs = window.require('fs');
             if (fs && fs.existsSync && !fs.existsSync(stickerPath)) {
-              console.warn(`[ZimuShengcheng] 鈿狅笍 璐寸焊鏂囦欢涓嶅瓨鍦紝璺宠繃: ${stickerPath}`);
+              console.warn(`[ZimuShengcheng] ⚠️ 贴纸文件不存在，跳过: ${stickerPath}`);
               fileExists = false;
             }
           }
         } catch (e) {
-          console.warn('[ZimuShengcheng] 鏃犳硶妫€鏌ユ枃浠跺瓨鍦ㄦ€?(闈濫lectron鐜?)', e);
+          console.warn('[ZimuShengcheng] 鏃犳硶妫€鏌ユ枃浠跺瓨鍦ㄦ€?(非Electron环境?)', e);
         }
 
         if (fileExists) {
@@ -4193,12 +4193,12 @@ export class ZimuShengcheng {
             assetsMap.set(stickerPath, []);
           }
 
-          // 馃啎 鑷€傚簲缂╂斁閫昏緫
-          // 鑾峰彇瀛椾綋澶у皬锛岄粯璁や负 72
+          // 🆕 自适应缩放逻辑
+          // 获取字体大小，默认为 72
           const fontSize = (sub.style && sub.style.fontSize) ? Number(sub.style.fontSize) : 72;
 
-          // 鍋囪璐寸焊鏍囧噯澶у皬涓?512x512 (宸茬粡鍦?collector.py 涓粺涓€)
-          // 鐩爣锛氳创绾搁珮搴︾害涓哄瓧浣撶殑 2.5 鍊嶏紝浠ヨ鐩栨枃瀛?
+          // 鍋囪璐寸焊鏍囧噯澶у皬涓?512x512 (宸茬粡鍦?collector.py 中统一)
+          // 目标：贴纸高度约为字体的 2.5 鍊嶏紝浠ヨ鐩栨枃瀛?
           const BASE_SIZE = 512;
           const targetSize = fontSize * 3.0; // 3鍊嶅瓧浣撳ぇ灏?
           const autoScale = targetSize / BASE_SIZE;
@@ -4211,43 +4211,43 @@ export class ZimuShengcheng {
           // 鏈€缁堝弬鏁?
           const finalScale = autoScale * userScale;
 
-          // 鏃㈢劧鎴戜滑鍦?FFmpeg 涓娇鐢?overlay锛岄€氬父 overlay 涓嶆敼鍙樺ぇ灏忋€?
-          // 鎴戜滑闇€瑕佸湪 overlay 涔嬪墠缂╂斁 sticker锛屾垨鑰呬娇鐢?overlay 鐨?scale 鍙傛暟 (濡傛灉鏄緝鏂?ffmpeg)
+          // 鏃㈢劧鎴戜滑鍦?FFmpeg 涓娇鐢?overlay，通常 overlay 涓嶆敼鍙樺ぇ灏忋€?
+          // 我们需要在 overlay 之前缩放 sticker锛屾垨鑰呬娇鐢?overlay 鐨?scale 参数 (濡傛灉鏄緝鏂?ffmpeg)
           // DrawtextGenerator 鐩墠鍙敓鎴?overlay=x:y:enable...
           // 
-          // 馃挕 绛栫暐璋冩暣锛?
-          // 涓轰簡鏀寔缂╂斁锛屾垜浠渶瑕佸湪 DrawtextGenerator 涓敮鎸?w/h 鍙傛暟锛?
-          // 鎴栬€呭湪 buildFFmpegCommand 涓瀯寤?filter chain 鏃跺姞鍏?scale 婊ら暅銆?
+          // 💡 绛栫暐璋冩暣锛?
+          // 为了支持缩放，我们需要在 DrawtextGenerator 涓敮鎸?w/h 鍙傛暟锛?
+          // 或者在 buildFFmpegCommand 涓瀯寤?filter chain 鏃跺姞鍏?scale 婊ら暅銆?
           // 
-          // 绠€鍗曟柟妗堬細鍒╃敤 overlay 婊ら暅鐨?scale 閫夐」 (ffmpeg 4.x+ 鏀寔 overlay=x:y:enable:scale=...) 
-          // 涔熷氨鏄?DrawtextGenerator 鐢熸垚 overlay=...:scale='...' 
-          // 浣?DrawtextGenerator.ts 鐩墠鐨?generateStickerOverlay 娌℃湁鐢ㄥ埌 w/h銆?
+          // 简单方案：利用 overlay 婊ら暅鐨?scale 选项 (ffmpeg 4.x+ 支持 overlay=x:y:enable:scale=...) 
+          // 涔熷氨鏄?DrawtextGenerator 生成 overlay=...:scale='...' 
+          // 浣?DrawtextGenerator.ts 鐩墠鐨?generateStickerOverlay 没有用到 w/h銆?
           //
-          // 鎴戜滑闇€瑕佷紶閫?scale 淇℃伅缁?buildFFmpegCommand锛屽湪閭ｈ竟鏋勫缓 input -> scale -> overlay 閾俱€?
-          // 鎴栬€呬慨鏀?DrawtextGenerator.generateStickerOverlay 杩斿洖 scale 鍙傛暟銆?
+          // 鎴戜滑闇€瑕佷紶閫?scale 淇℃伅缁?buildFFmpegCommand，在那边构建 input -> scale -> overlay 閾俱€?
+          // 鎴栬€呬慨鏀?DrawtextGenerator.generateStickerOverlay 返回 scale 鍙傛暟銆?
 
-          // 閲嶆柊瀹¤ DrawtextGenerator.ts:
-          // 瀹冨彧杩斿洖 string銆?
+          // 重新审视 DrawtextGenerator.ts:
+          // 它只返回 string銆?
           // 
-          // 璁╂垜浠湪 assetsMap 涓瓨鍌?scale 淇℃伅銆?
+          // 让我们在 assetsMap 涓瓨鍌?scale 淇℃伅銆?
           // sub.position 閫氬父鏄枃瀛楀乏涓嬭鎴栧乏涓婅銆?
           // 鎴戜滑甯屾湜灞呬腑銆?
 
-          // 璁＄畻鍋忕Щ閲忥細
-          // 璐寸焊缂╂斁鍚庣殑澶у皬
+          // 计算偏移量：
+          // 贴纸缩放后的大小
           const scaledWidth = BASE_SIZE * finalScale;
           const scaledHeight = BASE_SIZE * finalScale;
 
-          // 馃啎 绮剧‘灞呬腑閫昏緫
+          // 🆕 精确居中逻辑
           const textDims = this.estimateSubtitleDimensions(sub.text, fontSize, sub.style?.fontName);
 
-          // 鏂囨湰涓績鐐?(鍋囪 sub.position 鏄乏涓婅)
+          // 鏂囨湰涓績鐐?(假设 sub.position 是左上角)
           // 杩欓噷鐨?sub.position.x/y 鏄瓧骞曞湪瑙嗛涓殑宸︿笂瑙掑潗鏍?
           const textCenterX = sub.position.x + (textDims.width / 2);
           const textCenterY = sub.position.y + (textDims.height / 2);
 
-          // 璐寸焊宸︿笂瑙?= 鏂囨湰涓績 - 璐寸焊涓€鍗?+ 鐢ㄦ埛鍋忕Щ
-          // 杩欐牱璐寸焊涓績鐐逛細涓庢枃鏈腑蹇冪偣閲嶅悎锛堝姞涓婄敤鎴峰亸绉伙級
+          // 璐寸焊宸︿笂瑙?= 文本中心 - 璐寸焊涓€鍗?+ 用户偏移
+          // 这样贴纸中心点会与文本中心点重合（加上用户偏移）
           const x = textCenterX - (scaledWidth / 2) + userOffsetX;
           const y = textCenterY - (scaledHeight / 2) + userOffsetY;
 
@@ -4256,8 +4256,8 @@ export class ZimuShengcheng {
             endTime: sub.end / 1000,
             x: Math.round(x),
             y: Math.round(y),
-            // 馃啎 浼犻€掔缉鏀炬瘮渚嬶紝鍚庣画 buildFFmpegCommand 闇€瑕佸鐞?(鎴栬€?DrawtextGenerator)
-            // 鐩墠 DrawtextGenerator 鎺ュ彛 StickerConfig 鏈?w, h銆?
+            // 🆕 传递缩放比例，后续 buildFFmpegCommand 闇€瑕佸鐞?(鎴栬€?DrawtextGenerator)
+            // 目前 DrawtextGenerator 接口 StickerConfig 鏈?w, h銆?
             w: Math.round(scaledWidth),
             h: Math.round(scaledHeight)
           });
@@ -4269,7 +4269,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鏋勫缓FFmpeg鍛戒护
+   * 构建FFmpeg命令
    * @private
    */
   private buildFFmpegCommand(
@@ -4279,36 +4279,36 @@ export class ZimuShengcheng {
     drawtextCommands: string[],
     fontDir: string,
     soundInstances?: any[],
-    stickerAssets?: { path: string, instances: any[] }[] // 馃啎 璐寸焊鍙傛暟
+    stickerAssets?: { path: string, instances: any[] }[] // 🆕 贴纸参数
   ): FFmpegCommand {
-    // 銆愭柊澧炴棩蹇椼€戞樉绀哄嵆灏嗕紶閫掔粰buildFilterComplex鐨勬墍鏈夊懡浠?
-    console.log('[ZimuShengcheng.buildFFmpegCommand] ====== drawtextCommands 璇婃柇淇℃伅 ======');
-    console.log('[ZimuShengcheng.buildFFmpegCommand] 鎬诲懡浠ゆ暟:', drawtextCommands.length);
+    // 【新增日志】显示即将传递给buildFilterComplex鐨勬墍鏈夊懡浠?
+    console.log('[ZimuShengcheng.buildFFmpegCommand] ====== drawtextCommands 诊断信息 ======');
+    console.log('[ZimuShengcheng.buildFFmpegCommand] 总命令数:', drawtextCommands.length);
     drawtextCommands.forEach((cmd, index) => {
       const textMatch = cmd.match(/text='([^']*?)'/);
       const textContent = textMatch ? textMatch[1] : '(鏈壘鍒版枃鏈?';
-      console.log(`[ZimuShengcheng.buildFFmpegCommand] Command${index}: "${textContent}" (闀垮害${cmd.length})`);
+      console.log(`[ZimuShengcheng.buildFFmpegCommand] Command${index}: "${textContent}" (长度${cmd.length})`);
     });
-    console.log('[ZimuShengcheng.buildFFmpegCommand] ====== 寮€濮嬫瀯寤篺ilter_complex ======');
+    console.log('[ZimuShengcheng.buildFFmpegCommand] ====== 开始构建filter_complex ======');
 
-    // 馃啎 鏂板锛氬鏋滄湁闊虫晥瀹炰緥锛岀敓鎴愰煶棰戞贩闊抽厤缃?
+    // 🆕 鏂板锛氬鏋滄湁闊虫晥瀹炰緥锛岀敓鎴愰煶棰戞贩闊抽厤缃?
     // Calculate input offset for audio (1 (video) + sticker count)
-    // 娉ㄦ剰锛欱uild audio mix config 闇€瑕佺煡閬撲箣鍓嶅凡缁忔湁澶氬皯涓?input 浜?
+    // 注意：Build audio mix config 闇€瑕佺煡閬撲箣鍓嶅凡缁忔湁澶氬皯涓?input 浜?
     // 瑙嗛鏄?Input 0
     // 璐寸焊浠?Input 1 寮€濮嬶紝鏈?stickerAssets.length 涓?
     // 闊虫晥浠?Input 1 + stickerAssets.length 寮€濮?
     const stickerCount = stickerAssets ? stickerAssets.length : 0;
-    const audioInputStartOffset = stickerCount; // 闊虫晥杈撳叆鐨勮捣濮嬪亸绉婚噺 (鐩稿浜?Input 1)
+    const audioInputStartOffset = stickerCount; // 音效输入的起始偏移量 (鐩稿浜?Input 1)
 
     let audioMixConfig: { inputFiles: string[]; mixFilter: string } | null = null;
     if (soundInstances && soundInstances.length > 0) {
-      console.log('[ZimuShengcheng.buildFFmpegCommand] 馃攰 浠ヤ笅闊虫晥闇€瑕佹贩鍏ヨ棰?', soundInstances.length);
+      console.log('[ZimuShengcheng.buildFFmpegCommand] 🔊 浠ヤ笅闊虫晥闇€瑕佹贩鍏ヨ棰?', soundInstances.length);
       audioMixConfig = this.buildAudioMixConfig(soundInstances, audioInputStartOffset);
     }
 
-    // 馃啎 鏋勫缓娣峰悎婊ら暅閾?(浼樺寲鐗堬細姝ｇ‘鍒嗗眰)
-    // 閫昏緫锛歏ideo -> [Stickers] -> [Drawtext] -> Output
-    // 鍏堝鐞嗚创绾革紝寰楀埌涓棿娴佹爣绛撅紝鐒跺悗浼犵粰 DrawtextGenerator
+    // 🆕 鏋勫缓娣峰悎婊ら暅閾?(优化版：正确分层)
+    // 逻辑：Video -> [Stickers] -> [Drawtext] -> Output
+    // 先处理贴纸，得到中间流标签，然后传给 DrawtextGenerator
 
     let currentStream = '[0:v]';
     let filterParts: string[] = [];
@@ -4322,7 +4322,7 @@ export class ZimuShengcheng {
       let inputIndex = 1;
 
       stickerAssets.forEach(asset => {
-        // 鏀堕泦璐寸焊杈撳叆鍙傛暟
+        // 收集贴纸输入参数
         stickerInputOptions.push('-i', asset.path);
 
         const instanceCount = asset.instances.length;
@@ -4342,18 +4342,18 @@ export class ZimuShengcheng {
           splitOutputs.push(`[${inputIndex}:v]`);
         }
 
-        // 1.2 澶勭悊姣忎釜瀹炰緥 (缂╂斁 + 鍙犲姞)
+        // 1.2 处理每个实例 (缩放 + 叠加)
         asset.instances.forEach((instance, idx) => {
           const sourceStream = splitOutputs[idx];
           const scaledStream = `[scaled_${inputIndex}_${idx}]`;
 
-          // 娣诲姞缂╂斁婊ら暅 (濡傛灉鏈?w/h)
+          // 添加缩放滤镜 (濡傛灉鏈?w/h)
           if (instance.w && instance.h) {
             filterParts.push(`${sourceStream}scale=${instance.w}:${instance.h}${scaledStream}`);
           }
           const activeStream = (instance.w && instance.h) ? scaledStream : sourceStream;
 
-          // 鐢熸垚 overlay 鍙傛暟
+          // 生成 overlay 参数
           const overlayParams = `x=${instance.x}:y=${instance.y}:enable='between(t,${instance.startTime},${instance.endTime})'`;
           const nextStream = `[v_stk_out_${inputIndex}_${idx}]`;
 
@@ -4365,25 +4365,25 @@ export class ZimuShengcheng {
         inputIndex++;
       });
 
-      console.log('[ZimuShengcheng] 璐寸焊澶勭悊瀹屾瘯锛屾渶缁堟祦鏍囩:', currentStream);
+      console.log('[ZimuShengcheng] 贴纸处理完毕，最终流标签:', currentStream);
     }
 
-    // 2. 鏋勫缓瀛楀箷 Drawtext (鎺ユ敹 currentStream 浣滀负杈撳叆)
-    // 鎰熻阿 DrawtextGenerator 鐨勬洿鏂帮紝鐜板湪鍙互浼犻€?inputLabel
+    // 2. 构建字幕 Drawtext (接收 currentStream 作为输入)
+    // 感谢 DrawtextGenerator 鐨勬洿鏂帮紝鐜板湪鍙互浼犻€?inputLabel
     const drawtextFilter = DrawtextGenerator.buildFilterComplex(
       drawtextCommands,
       assFiles,
       fontDir,
-      currentStream // 馃攽 鍏抽敭锛氬皢璐寸焊灞傜殑杈撳嚭浣滀负瀛楀箷灞傜殑杈撳叆
+      currentStream // 🔑 关键：将贴纸层的输出作为字幕层的输入
     );
 
     if (drawtextFilter) {
       filterParts.push(drawtextFilter);
     }
 
-    // 缁勫悎鏈€缁堢殑 filter_complex
+    // 组合最终的 filter_complex
     let finalFilterComplex = filterParts.join(';');
-    console.log('[ZimuShengcheng] 鏈€缁?filter_complex 闀垮害:', finalFilterComplex.length);
+    console.log('[ZimuShengcheng] 鏈€缁?filter_complex 长度:', finalFilterComplex.length);
 
 
     let fullCommand = DrawtextGenerator.buildFFmpegCommand(
@@ -4392,19 +4392,19 @@ export class ZimuShengcheng {
       finalFilterComplex // 浣跨敤鏈€缁堢殑婊ら暅閾?
     );
 
-    // 銆愪慨澶嶃€戝鐞嗚繃闀跨殑filter_complex
-    // 濡傛灉杩斿洖鐗规畩鏍囪锛岃〃绀洪渶瑕佷娇鐢ㄦ枃浠舵柟寮忎紶閫掕繃婊ゅ櫒
+    // 【修复】处理过长的filter_complex
+    // 如果返回特殊标记，表示需要使用文件方式传递过滤器
     if (fullCommand.startsWith('__USE_FILTER_FILE__:')) {
-      console.log('[ZimuShengcheng] 妫€娴嬪埌filter_complex杩囬暱锛屽皢浣跨敤鏂囦欢鏂瑰紡浼犻€?..');
+      console.log('[ZimuShengcheng] 检测到filter_complex杩囬暱锛屽皢浣跨敤鏂囦欢鏂瑰紡浼犻€?..');
       // 鎻愬彇杩囨护鍣ㄥ唴瀹?
       const actualFilterContent = fullCommand.substring('__USE_FILTER_FILE__:'.length);
-      // 銆愪慨澶嶃€戜娇鐢↗SON鏍煎紡閬垮厤璺緞涓殑鍐掑彿瀵艰嚧鍒嗗壊閿欒
+      // 【修复】使用JSON格式避免路径中的冒号导致分割错误
       const scriptData = JSON.stringify({
         filterContent: actualFilterContent,
         inputVideo: inputVideo,
         outputVideo: outputVideo,
-        audioMixConfig: audioMixConfig,  // 馃啎 鍖呭惈闊抽娣烽煶閰嶇疆
-        stickerInputs: stickerInputOptions // 馃啎 鍖呭惈璐寸焊杈撳叆鍙傛暟
+        audioMixConfig: audioMixConfig,  // 🆕 包含音频混音配置
+        stickerInputs: stickerInputOptions // 🆕 包含贴纸输入参数
       });
       fullCommand = `__USE_FILTER_SCRIPT__:${scriptData}`;
     }
@@ -4413,15 +4413,15 @@ export class ZimuShengcheng {
       fullCommand,
       filters: [finalFilterComplex],
       assFiles,
-      tempFiles: assFiles, // 闇€瑕佹竻鐞嗙殑涓存椂鏂囦欢
-      audioMixConfig,  // 馃啎 杩斿洖闊抽娣烽煶閰嶇疆
-      stickerInputs: stickerInputOptions // 馃啎 杩斿洖璐寸焊杈撳叆
+      tempFiles: assFiles, // 需要清理的临时文件
+      audioMixConfig,  // 🆕 返回音频混音配置
+      stickerInputs: stickerInputOptions // 🆕 返回贴纸输入
     };
   }
 
   /**
-   * 馃啎 鏋勫缓闊抽娣烽煶閰嶇疆
-   * @param inputOffset 闊抽杈撳叆鐨勮捣濮嬪亸绉婚噺 (榛樿涓?, 鍗充粠 Input 1 寮€濮?
+   * 🆕 构建音频混音配置
+   * @param inputOffset 音频输入的起始偏移量 (榛樿涓?, 即从 Input 1 寮€濮?
    * @private
    */
   private buildAudioMixConfig(soundInstances: any[], inputOffset: number = 0): { inputFiles: string[]; mixFilter: string } | null {
@@ -4429,8 +4429,8 @@ export class ZimuShengcheng {
     const validInstances: { filePath: string; triggerTime: number; volume: number }[] = [];
 
     for (const instance of soundInstances) {
-      // 閫氳繃鍚屾鏂瑰紡鑾峰彇闊虫晥鏂囦欢璺緞锛堣繖閲岄渶瑕佸湪鎵ц鍓嶅鐞嗭級
-      // 绠€鍖栫増锛氱洿鎺ヤ粠 soundInstances 涓鍙栧凡瑙ｆ瀽鐨勮矾寰?
+      // 通过同步方式获取音效文件路径（这里需要在执行前处理）
+      // 简化版：直接从 soundInstances 涓鍙栧凡瑙ｆ瀽鐨勮矾寰?
       if (instance.filePath) {
         validInstances.push({
           filePath: instance.filePath,
@@ -4445,13 +4445,13 @@ export class ZimuShengcheng {
       return null;
     }
 
-    // 鐢熸垚杈撳叆鏂囦欢鍒楄〃
+    // 生成输入文件列表
     const inputFiles = validInstances.map(v => v.filePath);
 
-    // 鐢熸垚娣烽煶婊ら暅
-    // 鏍煎紡: [1:a]adelay=1500|1500,volume=0.7[a1];[2:a]adelay=3000|3000,volume=0.6[a2];[0:a][a1][a2]amix=inputs=3[aout]
+    // 生成混音滤镜
+    // 格式: [1:a]adelay=1500|1500,volume=0.7[a1];[2:a]adelay=3000|3000,volume=0.6[a2];[0:a][a1][a2]amix=inputs=3[aout]
     const delayFilters: string[] = [];
-    const labels: string[] = ['[0:a]'];  // 鍘熷瑙嗛闊宠建
+    const labels: string[] = ['[0:a]'];  // 原始视频音轨
 
     validInstances.forEach((instance, index) => {
       // Input Index = 1 (Video) + inputOffset (Stickers) + index (Current Audio)
@@ -4465,13 +4465,13 @@ export class ZimuShengcheng {
       labels.push(`[${label}]`);
     });
 
-    // 鐢熸垚娣烽煶婊ら暅
-    // 馃敡 淇锛氭坊鍔?normalize=0 绂佺敤褰掍竴鍖栵紝淇濇寔鍘熷瑙嗛闊抽噺涓嶅彉
-    // weights 鍙傛暟锛氱涓€涓槸鍘熷瑙嗛闊抽噺锛堣涓?锛夛紝鍏朵綑鏄煶鏁堥煶閲忥紙鐢卞疄渚嬫帶鍒讹級
+    // 生成混音滤镜
+    // 🔧 淇锛氭坊鍔?normalize=0 禁用归一化，保持原始视频音量不变
+    // weights 鍙傛暟锛氱涓€涓槸鍘熷瑙嗛闊抽噺锛堣涓?），其余是音效音量（由实例控制）
     const weights = ['1', ...validInstances.map(() => '1')].join(' ');
     const mixFilter = `${delayFilters.join(';')};${labels.join('')}amix=inputs=${labels.length}:duration=first:normalize=0:weights=${weights}[aout]`;
 
-    console.log('[ZimuShengcheng.buildAudioMixConfig] 闊抽娣烽煶婊ら暅:', mixFilter);
+    console.log('[ZimuShengcheng.buildAudioMixConfig] 音频混音滤镜:', mixFilter);
     console.log('[ZimuShengcheng.buildAudioMixConfig] 闊虫晥鏂囦欢鏁?', inputFiles.length);
 
     return {
@@ -4481,7 +4481,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鎵цFFmpeg娓叉煋
+   * 执行FFmpeg渲染
    * @private
    */
   private async executeFFmpeg(ffmpegCmd: FFmpegCommand): Promise<void> {
@@ -4490,12 +4490,12 @@ export class ZimuShengcheng {
     let inputVideo: string | null = null;
     let outputVideo: string | null = null;
 
-    // 銆愪慨澶嶃€戝鐞嗚繃闀跨殑filter_complex锛堜娇鐢╡xecFile閬垮厤鍛戒护琛岄檺鍒讹級
-    // 娉ㄦ剰锛欴rawtextGenerator.buildFFmpegCommand 杩斿洖鐨勬槸 __USE_FILTER_FILE__: 鏍囪
+    // 【修复】处理过长的filter_complex（使用execFile避免命令行限制）
+    // 注意：DrawtextGenerator.buildFFmpegCommand 返回的是 __USE_FILTER_FILE__: 标记
     if (actualCommand.startsWith('__USE_FILTER_FILE__:') || actualCommand.startsWith('__USE_FILTER_SCRIPT__:')) {
-      console.log('[ZimuShengcheng] 妫€娴嬪埌杩囬暱杩囨护鍣紝浣跨敤execFile鏂瑰紡...');
+      console.log('[ZimuShengcheng] 检测到过长过滤器，使用execFile方式...');
       try {
-        // 銆愪慨澶嶃€戣В鏋怞SON鏍煎紡鐨勫弬鏁?
+        // 【修复】解析JSON鏍煎紡鐨勫弬鏁?
         const prefixLen = actualCommand.startsWith('__USE_FILTER_SCRIPT__:')
           ? '__USE_FILTER_SCRIPT__:'.length
           : '__USE_FILTER_FILE__:'.length;
@@ -4512,44 +4512,44 @@ export class ZimuShengcheng {
           outputVideo
         });
 
-        // 馃敡 楠岃瘉filterContent涓嶄负绌?
+        // 🔧 验证filterContent涓嶄负绌?
         if (!filterContent || filterContent.trim() === '') {
           console.error('[ZimuShengcheng] filterContent 为空');
           throw new Error('FFmpeg filter 内容为空，无法生成字幕视频');
         }
       } catch (error) {
-        console.error('[ZimuShengcheng] 瑙ｆ瀽filter鑴氭湰鍙傛暟澶辫触:', error);
+        console.error('[ZimuShengcheng] 解析filter脚本参数失败:', error);
         throw error;
       }
     }
 
     try {
-      // 閫氳繃IPC璋冪敤FFmpeg
+      // 通过IPC调用FFmpeg
       if (typeof window !== 'undefined' && window.$mapi?.shell?.executeFFmpeg) {
-        // 娴忚鍣ㄧ幆澧冿細浣跨敤IPC
-        console.log('[ZimuShengcheng] 閫氳繃IPC璋冪敤FFmpeg...');
+        // 浏览器环境：使用IPC
+        console.log('[ZimuShengcheng] 通过IPC调用FFmpeg...');
         if (filterContent && inputVideo && outputVideo) {
-          // 馃啎 鑾峰彇闊虫晥娣烽煶閰嶇疆
+          // 🆕 获取音效混音配置
           const audioMixConfig = ffmpegCmd.audioMixConfig;
           if (audioMixConfig && audioMixConfig.inputFiles.length > 0) {
-            console.log('[ZimuShengcheng] 馃攰 IPC 璺緞锛氭娴嬪埌闊虫晥娣烽煶閰嶇疆:', {
+            console.log('[ZimuShengcheng] 🔊 IPC 路径：检测到音效混音配置:', {
               inputFilesCount: audioMixConfig.inputFiles.length,
               mixFilter: audioMixConfig.mixFilter
             });
           }
 
-          // 濡傛灉鏄暱杩囨护鍣紝浼犻€扟SON缁橧PC澶勭悊锛堝寘鍚煶鏁堥厤缃級
+          // 如果是长过滤器，传递JSON给IPC处理（包含音效配置）
           await window.$mapi.shell.executeFFmpeg(JSON.stringify({
             type: 'ffmpeg_long_filter',
             filterComplex: filterContent,
             inputVideo: inputVideo,
             outputVideo: outputVideo,
-            stickerInputs: ffmpegCmd.stickerInputs, // 馃啎 浼犻€掕创绾歌緭鍏ョ粰 IPC
-            // 馃啎 浼犻€掗煶鏁堟贩闊抽厤缃?
+            stickerInputs: ffmpegCmd.stickerInputs, // 🆕 传递贴纸输入给 IPC
+            // 🆕 浼犻€掗煶鏁堟贩闊抽厤缃?
             audioMixConfig: audioMixConfig
           }));
 
-          console.log('[ZimuShengcheng] 馃摛 IPC璋冪敤Payload:', {
+          console.log('[ZimuShengcheng] 📤 IPC调用Payload:', {
             hasStickerInputs: !!ffmpegCmd.stickerInputs,
             stickerInputsLength: ffmpegCmd.stickerInputs?.length,
             stickerInputsPreview: ffmpegCmd.stickerInputs
@@ -4558,7 +4558,7 @@ export class ZimuShengcheng {
           await window.$mapi.shell.executeFFmpeg(actualCommand);
         }
       } else {
-        // Node.js鐜锛氫娇鐢╡xecFile閬垮厤鍛戒护琛岄暱搴﹂檺鍒?
+        // Node.js环境：使用execFile閬垮厤鍛戒护琛岄暱搴﹂檺鍒?
         const { execFile } = await import('child_process');
         const util = await import('util');
         const execFilePromise = util.promisify(execFile);
@@ -4570,56 +4570,56 @@ export class ZimuShengcheng {
         let filterScriptFile: string | null = null;
 
         if (filterContent && inputVideo && outputVideo) {
-          // 馃敡 淇锛氫娇鐢╢ilter鏂囦欢鑰屼笉鏄懡浠よ鍙傛暟锛岄伩鍏岴NAMETOOLONG閿欒
-          // 鍒涘缓涓存椂filter鑴氭湰鏂囦欢
+          // 🔧 修复：使用filter文件而不是命令行参数，避免ENAMETOOLONG错误
+          // 创建临时filter脚本文件
           const tempDir = os.default.tmpdir();
           filterScriptFile = path.default.join(tempDir, `ffmpeg_filter_${Date.now()}.txt`);
 
-          // 鍐欏叆filter_complex鍒版枃浠?
+          // 写入filter_complex鍒版枃浠?
           await fs.promises.writeFile(filterScriptFile, filterContent, 'utf-8');
-          console.log('[ZimuShengcheng] 鍒涘缓filter鑴氭湰鏂囦欢:', filterScriptFile, '澶у皬:', filterContent.length, '瀛楃');
+          console.log('[ZimuShengcheng] 创建filter脚本文件:', filterScriptFile, '大小:', filterContent.length, '字符');
 
-          // 銆愪慨澶嶃€戜娇鐢?-/filter_complex 鍙傛暟璇诲彇鏂囦欢锛?filter_complex_script 宸插簾寮冿級
-          // 馃啎 妫€鏌ユ槸鍚︽湁闊虫晥娣烽煶閰嶇疆
+          // 銆愪慨澶嶃€戜娇鐢?-/filter_complex 鍙傛暟璇诲彇鏂囦欢锛?filter_complex_script 已废弃）
+          // 🆕 检查是否有音效混音配置
           const audioMixConfig = ffmpegCmd.audioMixConfig;
-          // 馃啎 鑾峰彇璐寸焊杈撳叆鍙傛暟
+          // 🆕 获取贴纸输入参数
           const stickerInputs = ffmpegCmd.stickerInputs || [];
 
           let combinedFilterContent = filterContent;
           let audioArgs: string[] = [];
 
           if (audioMixConfig && audioMixConfig.inputFiles.length > 0) {
-            console.log('[ZimuShengcheng] 馃攰 妫€娴嬪埌闊虫晥娣烽煶閰嶇疆:', {
+            console.log('[ZimuShengcheng] 🔊 检测到音效混音配置:', {
               inputFilesCount: audioMixConfig.inputFiles.length,
               mixFilter: audioMixConfig.mixFilter
             });
 
-            // 娣诲姞闊虫晥鏂囦欢浣滀负棰濆杈撳叆
+            // 添加音效文件作为额外输入
             for (const soundFile of audioMixConfig.inputFiles) {
               audioArgs.push('-i', soundFile);
             }
 
-            // 灏嗛煶棰戞贩闊虫护闀滄坊鍔犲埌瑙嗛婊ら暅鏈熬
+            // 将音频混音滤镜添加到视频滤镜末尾
             // 瑙嗛婊ら暅閫氬父浠?[out] 鎴?[v] 缁撳熬锛屾垜浠渶瑕佹坊鍔犻煶棰戞贩闊?
             combinedFilterContent = filterContent + ';' + audioMixConfig.mixFilter;
-            console.log('[ZimuShengcheng] 馃攰 缁勫悎鍚庣殑婊ら暅锛堝寘鍚煶鏁堬級闀垮害:', combinedFilterContent.length);
+            console.log('[ZimuShengcheng] 🔊 组合后的滤镜（包含音效）长度:', combinedFilterContent.length);
           }
 
-          // 鍐欏叆filter_complex鍒版枃浠?
+          // 写入filter_complex鍒版枃浠?
           await fs.promises.writeFile(filterScriptFile, combinedFilterContent, 'utf-8');
-          console.log('[ZimuShengcheng] 鍒涘缓filter鑴氭湰鏂囦欢:', filterScriptFile, '澶у皬:', combinedFilterContent.length, '瀛楃');
+          console.log('[ZimuShengcheng] 创建filter脚本文件:', filterScriptFile, '大小:', combinedFilterContent.length, '字符');
 
-          // 鏋勫缓 args锛氳棰戣緭鍏?+ 闊虫晥杈撳叆 + 婊ら暅 + 杈撳嚭
+          // 构建 args锛氳棰戣緭鍏?+ 音效输入 + 滤镜 + 输出
           if (audioMixConfig && audioMixConfig.inputFiles.length > 0) {
             // 鏈夐煶鏁堟椂锛氫娇鐢?-map 鎸囧畾杈撳嚭娴?
             args = [
-              '-y',  // 瑕嗙洊宸插瓨鍦ㄧ殑杈撳嚭鏂囦欢
+              '-y',  // 覆盖已存在的输出文件
               '-i', inputVideo,
-              ...stickerInputs, // 馃啎涓€瀹氳鍔犱笂璐寸焊杈撳叆!
-              ...audioArgs,  // 闊虫晥鏂囦欢杈撳叆
-              `-filter_complex_script`, filterScriptFile,  // 浣跨敤婊ら暅鑴氭湰鏂囦欢
-              '-map', '[out]',  // 瑙嗛杈撳嚭
-              '-map', '[aout]', // 闊抽杈撳嚭
+              ...stickerInputs, // 🆕一定要加上贴纸输入!
+              ...audioArgs,  // 音效文件输入
+              `-filter_complex_script`, filterScriptFile,  // 使用滤镜脚本文件
+              '-map', '[out]',  // 视频输出
+              '-map', '[aout]', // 音频输出
               '-c:v', 'libx264',
               '-preset', 'medium',
               '-crf', '18',
@@ -4628,11 +4628,11 @@ export class ZimuShengcheng {
               outputVideo
             ];
           } else {
-            // 鏃犻煶鏁堬細榛樿鍙傛暟
+            // 无音效：默认参数
             args = [
               '-y',
               '-i', inputVideo,
-              ...stickerInputs, // 馃啎 鏃犻煶鏁堟椂涔熻鍔犱笂璐寸焊杈撳叆
+              ...stickerInputs, // 🆕 无音效时也要加上贴纸输入
               `-filter_complex_script`, filterScriptFile,
               '-map', '[out]',
               // '-map', '0:a?', // 灏濊瘯澶嶅埗鍘熼煶棰戯紙濡傛灉瀛樺湪锛?
@@ -4643,49 +4643,49 @@ export class ZimuShengcheng {
               outputVideo
             ];
           }
-          console.log('[ZimuShengcheng] 浣跨敤execFile鎵цFFmpeg锛堥暱杩囨护鍣ㄦ枃浠舵ā寮忥級...');
+          console.log('[ZimuShengcheng] 使用execFile执行FFmpeg（长过滤器文件模式）...');
 
-          // 纭繚娓呯悊filter鏂囦欢
+          // 确保清理filter文件
           if (!ffmpegCmd.tempFiles) {
             ffmpegCmd.tempFiles = [];
           }
           ffmpegCmd.tempFiles.push(filterScriptFile);
         } else {
           // 姝ｅ父鎯呭喌锛氱洿鎺ユ墽琛?
-          console.log('[ZimuShengcheng] 浣跨敤execFile鎵цFFmpeg锛堟櫘閫氭ā寮忥級...');
-          args = actualCommand.split(' ').slice(1); // 璺宠繃'ffmpeg'
+          console.log('[ZimuShengcheng] 使用execFile执行FFmpeg（普通模式）...');
+          args = actualCommand.split(' ').slice(1); // 跳过'ffmpeg'
           args = args.map(arg => arg.startsWith('"') && arg.endsWith('"') ? arg.slice(1, -1) : arg);
         }
 
         const result = await execFilePromise('ffmpeg', args);
-        console.log('[ZimuShengcheng] FFmpeg杈撳嚭:', result.stdout?.substring(0, 200));
+        console.log('[ZimuShengcheng] FFmpeg输出:', result.stdout?.substring(0, 200));
 
-        // FFmpeg 灏嗘甯歌緭鍑猴紙鐗堟湰淇℃伅銆佺紪鐮佺粺璁＄瓑锛夎緭鍑哄埌 stderr
+        // FFmpeg 将正常输出（版本信息、编码统计等）输出到 stderr
         // 杩欐槸鏍囧噯琛屼负锛屼笉鏄敊璇?
         if (result.stderr) {
-          // 妫€鏌ユ槸鍚﹀寘鍚湡姝ｇ殑閿欒淇℃伅
+          // 检查是否包含真正的错误信息
           const hasRealError = /error|failed|invalid|fatal/i.test(result.stderr);
           if (hasRealError) {
-            console.error('[ZimuShengcheng] FFmpeg閿欒:', result.stderr);
+            console.error('[ZimuShengcheng] FFmpeg错误:', result.stderr);
             throw new Error(result.stderr);
           } else {
-            console.log('[ZimuShengcheng] FFmpeg淇℃伅杈撳嚭:', result.stderr.substring(0, 500) + (result.stderr.length > 500 ? '...' : ''));
+            console.log('[ZimuShengcheng] FFmpeg信息输出:', result.stderr.substring(0, 500) + (result.stderr.length > 500 ? '...' : ''));
           }
         }
       }
     } catch (error) {
-      console.error('[ZimuShengcheng] FFmpeg鎵ц澶辫触:', error);
+      console.error('[ZimuShengcheng] FFmpeg执行失败:', error);
       throw error;
     } finally {
-      // 娓呯悊涓存椂鏂囦欢
+      // 清理临时文件
       await this.cleanupTempFiles(ffmpegCmd.tempFiles);
     }
   }
 
-  // ==================== 杈呭姪鏂规硶 ====================
+  // ==================== 辅助方法 ====================
 
   /**
-   * 鍒涘缓閲戣壊鐗规晥鏍峰紡
+   * 创建金色特效样式
    * @private
    */
   private createGoldEffectStyle(config: ZimuConfig): ASSStyleConfig {
@@ -4693,7 +4693,7 @@ export class ZimuShengcheng {
       name: 'GoldEffect',
       fontname: config.subtitleStyle.fontName || 'Microsoft YaHei Bold',
       fontsize: Math.round((config.subtitleStyle.fontSize || 48) * 1.5),
-      primaryColour: '&H0000D7FF',  // 閲戣壊锛圔GR椤哄簭锛?
+      primaryColour: '&H0000D7FF',  // 金色（BGR椤哄簭锛?
       secondaryColour: '&H000000FF',
       outlineColour: '&H00008CFF',
       backColour: '&H00000000',
@@ -4712,13 +4712,13 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 鑾峰彇杈撳嚭鐩綍锛堢敤浜庝繚瀛楢SS鏂囦欢锛?
-   * 鏀逛负浣跨敤output鐩綍鑰岄潪绯荤粺Temp鐩綍锛岄伩鍏峎indows鐭矾寰勶紙ADMINI~1锛夐棶棰?
+   * 获取输出目录（用于保存ASS鏂囦欢锛?
+   * 改为使用output目录而非系统Temp目录，避免Windows短路径（ADMINI~1锛夐棶棰?
    * @private
    */
   private async getTempDir(): Promise<string> {
-    // 馃敡 淇锛氫娇鐢ㄧ郴缁熶复鏃剁洰褰曡€屼笉鏄」鐩洰褰曪紝閬垮厤涓枃璺緞闂
-    // 浼樺厛浣跨敤 C:\Windows\Temp锛圵indows 绯荤粺鐩綍锛屼笉鍖呭惈涓枃锛?
+    // 🔧 修复：使用系统临时目录而不是项目目录，避免中文路径问题
+    // 优先使用 C:\Windows\Temp（Windows 绯荤粺鐩綍锛屼笉鍖呭惈涓枃锛?
     const path = await import('path');
     const fs = await import('fs');
 
@@ -4727,7 +4727,7 @@ export class ZimuShengcheng {
       ? 'C:/Windows/Temp/aigcpanel-fonts'
       : '/tmp/aigcpanel-fonts';
 
-    // 纭繚鐩綍瀛樺湪
+    // 确保目录存在
     if (typeof window !== 'undefined' && window.require) {
       const fsNode = window.require('fs');
       if (!fsNode.existsSync(systemTempDir)) {
@@ -4740,22 +4740,22 @@ export class ZimuShengcheng {
       }
     }
 
-    console.log(`[ZimuShengcheng] 浣跨敤绯荤粺涓存椂鐩綍: ${systemTempDir}`);
+    console.log(`[ZimuShengcheng] 使用系统临时目录: ${systemTempDir}`);
     return systemTempDir;
   }
 
   /**
-   * 鐢熸垚SRT鏂囦欢锛堢敤浜庡睍绀哄拰涓嬭浇锛?
+   * 生成SRT鏂囦欢锛堢敤浜庡睍绀哄拰涓嬭浇锛?
    * @private
    */
   private async generateSRTFile(segments: CorrectedSegment[], config: ZimuConfig): Promise<string> {
-    // 鐢熸垚SRT鍐呭
+    // 生成SRT内容
     let srtContent = '';
     let index = 1;
 
-    // 鏍煎紡鍖栨椂闂达紙杈撳叆涓烘绉掞紝杞崲涓篠RT鏍煎紡锛欻H:MM:SS,mmm锛?
+    // 格式化时间（输入为毫秒，转换为SRT格式：HH:MM:SS,mmm锛?
     const formatSRTTime = (milliseconds: number): string => {
-      // 杈撳叆缁熶竴涓烘绉掞紝杞崲涓虹
+      // 输入统一为毫秒，转换为秒
       const timeInSeconds = milliseconds / 1000;
 
       const h = Math.floor(timeInSeconds / 3600);
@@ -4765,7 +4765,7 @@ export class ZimuShengcheng {
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
     };
 
-    // 浠庝慨姝ｅ悗鐨勭墖娈电敓鎴怱RT
+    // 从修正后的片段生成SRT
     for (const segment of segments) {
       const startTime = formatSRTTime(segment.start);
       const endTime = formatSRTTime(segment.end);
@@ -4776,18 +4776,18 @@ export class ZimuShengcheng {
       index++;
     }
 
-    // 淇濆瓨SRT鏂囦欢鍒拌緭鍑虹洰褰?
+    // 保存SRT鏂囦欢鍒拌緭鍑虹洰褰?
     const outputDir = await this.getTempDir();
     const path = await import('path');
     const timestamp = Date.now();
     const srtFileName = `subtitle_${timestamp}.srt`;
     const srtPath = path.join(outputDir, srtFileName).replace(/\\/g, '/');
 
-    // 鍐欏叆鏂囦欢
+    // 写入文件
     if (typeof window !== 'undefined' && window.$mapi?.file?.write) {
       await window.$mapi.file.write(srtPath, srtContent, { isDataPath: false });
     } else {
-      // Node.js鐜
+      // Node.js环境
       const fs = await import('fs');
       const util = await import('util');
       const writeFile = util.promisify(fs.writeFile);
@@ -4799,7 +4799,7 @@ export class ZimuShengcheng {
   }
 
   /**
-   * 娓呯悊涓存椂鏂囦欢
+   * 清理临时文件
    * @private
    */
   private async cleanupTempFiles(files: string[]): Promise<void> {
@@ -4815,13 +4815,13 @@ export class ZimuShengcheng {
         }
         console.log(`[ZimuShengcheng] 已删除临时文件: ${file}`);
       } catch (error) {
-        console.warn(`[ZimuShengcheng] 鍒犻櫎涓存椂鏂囦欢澶辫触: ${file}`, error);
+        console.warn(`[ZimuShengcheng] 删除临时文件失败: ${file}`, error);
       }
     }
   }
 
   /**
-   * 鐢熸垚璋冭瘯鏂囦欢锛堝寘鍚墍鏈夊瓧骞曡缁嗕俊鎭級
+   * 生成调试文件（包含所有字幕详细信息）
    * @private
    */
   private async generateDebugFile(
@@ -4832,9 +4832,9 @@ export class ZimuShengcheng {
     const tempDir = await this.getTempDir();
     const debugPath = `${tempDir}/subtitle_debug_${Date.now()}.json`;
 
-    // 鍒涘缓璋冭瘯淇℃伅瀵硅薄
+    // 创建调试信息对象
     const debugInfo = {
-      // 鍩虹閰嶇疆
+      // 基础配置
       config: {
         videoWidth: config.videoWidth,
         videoHeight: config.videoHeight,
@@ -4842,7 +4842,7 @@ export class ZimuShengcheng {
         keywordGroupsCount: config.keywordGroups?.length || 0
       },
 
-      // 淇鍚庣殑娈佃惤
+      // 修正后的段落
       segments: this.correctedSegments.map(seg => ({
         text: seg.text,
         start: seg.start,
@@ -4858,12 +4858,12 @@ export class ZimuShengcheng {
         startTime: match.startTime,
         endTime: match.endTime,
         duration: match.endTime - match.startTime,
-        effectDuration: match.effectDuration, // 姣
+        effectDuration: match.effectDuration, // 毫秒
         groupId: match.groupId,
         groupName: match.groupName
       })),
 
-      // 鎺掑垪鍚庣殑瀛楀箷璇︽儏
+      // 排列后的字幕详情
       subtitles: subtitles.map((subtitle, index) => {
         const detail: any = {
           index,
@@ -4877,33 +4877,33 @@ export class ZimuShengcheng {
           layer: subtitle.layer
         };
 
-        // 濡傛灉鏈夊姩鐢婚厤缃紝娣诲姞璇︾粏淇℃伅
+        // 如果有动画配置，添加详细信息
         if (subtitle.animationConfig) {
           detail.animationConfig = {
             type: subtitle.animationConfig.type,
-            duration: subtitle.animationConfig.duration, // 姣
+            duration: subtitle.animationConfig.duration, // 毫秒
             delay: subtitle.animationConfig.delay,
             intensity: subtitle.animationConfig.intensity,
             parameters: subtitle.animationConfig.parameters
           };
         }
 
-        // 璁＄畻鏂囨湰瀹藉害锛堝儚绱狅級
+        // 计算文本宽度（像素）
         const charCount = this.countDisplayChars(subtitle.text);
         detail.charCount = charCount;
-        detail.estimatedWidth = charCount * subtitle.style.fontSize * 0.5; // 浼扮畻
+        detail.estimatedWidth = charCount * subtitle.style.fontSize * 0.5; // 估算
 
         return detail;
       }),
 
-      // 鏈€缁堢殑drawtext鍛戒护
+      // 最终的drawtext命令
       drawtextCommands: drawtextCommands.map((cmd, index) => ({
         index,
         command: cmd,
         length: cmd.length
       })),
 
-      // SmartLayoutManager淇℃伅
+      // SmartLayoutManager信息
       layoutManager: {
         screenWidth: config.videoWidth,
         screenHeight: config.videoHeight,
@@ -4911,7 +4911,7 @@ export class ZimuShengcheng {
         positionStrategy: 'see SmartLayoutManager.ts'
       },
 
-      // 缁熻淇℃伅
+      // 统计信息
       statistics: {
         totalSubtitles: subtitles.length,
         normalSubtitles: subtitles.filter(s => s.type === 'normal').length,
@@ -4936,24 +4936,24 @@ export class ZimuShengcheng {
       return debugPath;
 
     } catch (error) {
-      console.error('[ZimuShengcheng] 鐢熸垚璋冭瘯鏂囦欢澶辫触:', error);
+      console.error('[ZimuShengcheng] 生成调试文件失败:', error);
       return '';
     }
   }
 
   /**
-   * 璁＄畻鏄剧ず瀛楃鏁帮紙涓枃绠?锛岃嫳鏂囩畻0.5锛?
+   * 璁＄畻鏄剧ず瀛楃鏁帮紙涓枃绠?，英文算0.5锛?
    * @private
    */
   private countDisplayChars(text: string): number {
     let count = 0;
     for (const char of text) {
       if (/[\u4e00-\u9fff]/.test(char)) {
-        count += 1; // 涓枃
+        count += 1; // 中文
       } else if (/[a-zA-Z0-9\s]/.test(char)) {
-        count += 0.5; // 鑻辨枃鏁板瓧
+        count += 0.5; // 英文数字
       } else {
-        count += 0.3; // 鏍囩偣
+        count += 0.3; // 标点
       }
     }
     return count;

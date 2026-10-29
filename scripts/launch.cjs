@@ -66,7 +66,8 @@ async function main() {
   log('IP Bot source launcher');
   log(`Node.js: ${process.version}\nNode path: ${process.execPath}\nProject: ${root}\nLog: ${logFile}`);
   if (!['desktop', 'server', 'install'].includes(mode)) throw new Error('Usage: node scripts/launch.cjs desktop|server|install');
-  if (Number(process.versions.node.split('.')[0]) !== 22) throw new Error('Use Node.js 22.x for this project. Download it from https://nodejs.org/en/download and reopen the launcher.');
+  if (Number(process.versions.node.split('.')[0]) < 20) throw new Error('Node.js is too old. Install Node.js 22 LTS or a supported newer LTS version from https://nodejs.org/en/download and reopen the launcher.');
+  if (Number(process.versions.node.split('.')[0]) !== 22) log(`Note: Node.js ${process.version} detected. Node.js 22.x is the officially supported version; continuing with the current one.`);
   if (!checkOnly) {
     const initialized = require('./init-local-config.cjs').ensureLocalConfig(root);
     if (initialized.created) log('First run: created private configuration with a random JWT secret. Existing files are never overwritten.');

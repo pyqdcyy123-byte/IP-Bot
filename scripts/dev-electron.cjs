@@ -6,6 +6,9 @@ const waitOn = require("wait-on");
 
 require('./local-config.cjs').applyLocalEnvironment(path.resolve(__dirname, '..'));
 const projectRoot = path.resolve(__dirname, "..");
+// dev-server.cjs 在自己的进程里设置该变量（concurrently 的兄弟进程继承不到），这里补齐默认值，
+// 否则 Electron 主进程会回退加载 dist/index.html 导致白屏
+process.env.VITE_DEV_SERVER_URL ||= 'http://127.0.0.1:3344';
 const serverUrl = process.env.VITE_DEV_SERVER_URL || "http://127.0.0.1:3344";
 const mainBundle = path.join(projectRoot, "dist-electron", "main", "index.js");
 const preloadBundle = path.join(projectRoot, "dist-electron", "preload", "index.js");

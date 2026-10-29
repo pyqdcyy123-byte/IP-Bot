@@ -198,7 +198,7 @@ export const EasyServer = function (config: any) {
                     buffer = lines.pop() || "";
                     this.ServerApi.file.appendText(this.ServerInfo.logFile, _data, {isDataPath: true});
 
-                    // 鍙戦€佹棩蹇楀埌鍓嶇UI
+                    // 发送日志到前端UI
                     if (controllerWatching.id) {
                         this.send("taskLog", {
                             id: controllerWatching.id,
@@ -220,7 +220,7 @@ export const EasyServer = function (config: any) {
                     if (controllerWatching.launcherResult) {
                         controllerWatching.launcherResult.result.error =
                             AigcServerUtil.errorDetect(_data) || controllerWatching.launcherResult.result.error;
-                        // 馃敡 淇锛氬彧鏈夊湪End=true涓斿凡缁忔湁鏈夋晥缁撴灉(url/records/error)鏃舵墠resolve
+                        // 🔧 修复：只有在End=true且已经有有效结果(url/records/error)时才resolve
                         if (controllerWatching.launcherResult.result && controllerWatching.launcherResult.result['End']) {
                             const hasValidResult =
                                 controllerWatching.launcherResult.result.url ||
@@ -237,7 +237,7 @@ export const EasyServer = function (config: any) {
                     // console.log('easyServer.stderr', _data)
                     this.ServerApi.file.appendText(this.ServerInfo.logFile, _data, {isDataPath: true});
 
-                    // 鍙戦€佹棩蹇楀埌鍓嶇UI
+                    // 发送日志到前端UI
                     if (controllerWatching.id) {
                         this.send("taskLog", {
                             id: controllerWatching.id,
@@ -369,16 +369,16 @@ export const EasyServer = function (config: any) {
                 };
             },
             async (data: ServerFunctionDataType, launcherResult: LauncherResultType) => {
-                // 馃敡 淇锛氬拷鐣?{"End": true} 缁撴潫鏍囧織,鍙鏌ョ湡姝ｇ殑閿欒
+                // 🔧 修复：忽略 {"End": true} 结束标志，只检查真正的错误
                 if (!("url" in launcherResult.result)) {
-                    // 濡傛灉鏄疎nd鏍囧織,鐩存帴杩斿洖鐜版湁缁撴灉(涓嶆姤閿?
+                    // 如果是End标志,直接返回现有结果(涓嶆姤閿?
                     if (launcherResult.result.End === true) {
                         return launcherResult.result;
                     }
                     if (launcherResult.result.error) {
                         throw launcherResult.result.error;
                     }
-                    throw "鎵ц澶辫触锛岃鏌ョ湅妯″瀷鏃ュ織";
+                    throw "执行失败，请查看模型日志";
                 }
                 return {
                     url: launcherResult.result.url,
@@ -404,16 +404,16 @@ export const EasyServer = function (config: any) {
                 };
             },
             async (data: ServerFunctionDataType, launcherResult: LauncherResultType) => {
-                // 馃敡 淇锛氬拷鐣?{"End": true} 缁撴潫鏍囧織,鍙鏌ョ湡姝ｇ殑閿欒
+                // 🔧 修复：忽略 {"End": true} 结束标志，只检查真正的错误
                 if (!("url" in launcherResult.result)) {
-                    // 濡傛灉鏄疎nd鏍囧織,鐩存帴杩斿洖鐜版湁缁撴灉(涓嶆姤閿?
+                    // 如果是End标志,直接返回现有结果(涓嶆姤閿?
                     if (launcherResult.result.End === true) {
                         return launcherResult.result;
                     }
                     if (launcherResult.result.error) {
                         throw launcherResult.result.error;
                     }
-                    throw "鎵ц澶辫触锛岃鏌ョ湅妯″瀷鏃ュ織";
+                    throw "执行失败，请查看模型日志";
                 }
                 return {
                     url: launcherResult.result.url,
@@ -438,16 +438,16 @@ export const EasyServer = function (config: any) {
                 };
             },
             async (data: ServerFunctionDataType, launcherResult: LauncherResultType) => {
-                // 馃敡 淇锛氬拷鐣?{"End": true} 缁撴潫鏍囧織,鍙鏌ョ湡姝ｇ殑閿欒
+                // 🔧 修复：忽略 {"End": true} 结束标志，只检查真正的错误
                 if (!("url" in launcherResult.result)) {
-                    // 濡傛灉鏄疎nd鏍囧織,鐩存帴杩斿洖鐜版湁缁撴灉(涓嶆姤閿?
+                    // 如果是End标志,直接返回现有结果(涓嶆姤閿?
                     if (launcherResult.result.End === true) {
                         return launcherResult.result;
                     }
                     if (launcherResult.result.error) {
                         throw launcherResult.result.error;
                     }
-                    throw "鎵ц澶辫触锛岃鏌ョ湅妯″瀷鏃ュ織";
+                    throw "执行失败，请查看模型日志";
                 }
                 return {
                     url: launcherResult.result.url,
@@ -471,16 +471,16 @@ export const EasyServer = function (config: any) {
                 };
             },
             async (data: ServerFunctionDataType, launcherResult: LauncherResultType) => {
-                // 馃敡 淇锛氬拷鐣?{"End": true} 缁撴潫鏍囧織,鍙鏌ョ湡姝ｇ殑閿欒
+                // 🔧 修复：忽略 {"End": true} 结束标志，只检查真正的错误
                 if (!("records" in launcherResult.result)) {
-                    // 濡傛灉鏄疎nd鏍囧織,鐩存帴杩斿洖鐜版湁缁撴灉(涓嶆姤閿?
+                    // 如果是End标志,直接返回现有结果(涓嶆姤閿?
                     if (launcherResult.result.End === true) {
                         return launcherResult.result;
                     }
                     if (launcherResult.result.error) {
                         throw launcherResult.result.error;
                     }
-                    throw "鎵ц澶辫触锛岃鏌ョ湅妯″瀷鏃ュ織";
+                    throw "执行失败，请查看模型日志";
                 }
                 return {
                     records: launcherResult.result.records,
@@ -504,16 +504,16 @@ export const EasyServer = function (config: any) {
                 };
             },
             async (data: ServerFunctionDataType, launcherResult: LauncherResultType) => {
-                // 馃敡 淇锛氬拷鐣?{"End": true} 缁撴潫鏍囧織,鍙鏌ョ湡姝ｇ殑閿欒
+                // 🔧 修复：忽略 {"End": true} 结束标志，只检查真正的错误
                 if (!("url" in launcherResult.result)) {
-                    // 濡傛灉鏄疎nd鏍囧織,鐩存帴杩斿洖鐜版湁缁撴灉(涓嶆姤閿?
+                    // 如果是End标志,直接返回现有结果(涓嶆姤閿?
                     if (launcherResult.result.End === true) {
                         return launcherResult.result;
                     }
                     if (launcherResult.result.error) {
                         throw launcherResult.result.error;
                     }
-                    throw "鎵ц澶辫触锛岃鏌ョ湅妯″瀷鏃ュ織";
+                    throw "执行失败，请查看模型日志";
                 }
                 return {
                     url: launcherResult.result.url,
@@ -538,16 +538,16 @@ export const EasyServer = function (config: any) {
                 };
             },
             async (data: ServerFunctionDataType, launcherResult: LauncherResultType) => {
-                // 馃敡 淇锛氬拷鐣?{"End": true} 缁撴潫鏍囧織,鍙鏌ョ湡姝ｇ殑閿欒
+                // 🔧 修复：忽略 {"End": true} 结束标志，只检查真正的错误
                 if (!("url" in launcherResult.result)) {
-                    // 濡傛灉鏄疎nd鏍囧織,鐩存帴杩斿洖鐜版湁缁撴灉(涓嶆姤閿?
+                    // 如果是End标志,直接返回现有结果(涓嶆姤閿?
                     if (launcherResult.result.End === true) {
                         return launcherResult.result;
                     }
                     if (launcherResult.result.error) {
                         throw launcherResult.result.error;
                     }
-                    throw "鎵ц澶辫触锛岃鏌ョ湅妯″瀷鏃ュ織";
+                    throw "执行失败，请查看模型日志";
                 }
                 return {
                     url: launcherResult.result.url,
